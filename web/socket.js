@@ -46,7 +46,11 @@ class Queue {
     }
 }
 
-let socket=new WebSocket('ws://localhost:8080/ws');
+let protocol = location.protocol == 'https:' ? 'wss:' : 'ws:';
+let host = location.hostname;
+let port = location.port ? location.port : (protocol == 'wss:' ? 443 : 80);
+
+let socket=new WebSocket(`${protocol}//${host}:${port}/ws`);
 let promQueue=new Queue();
 let respQueue=new Queue();
 
