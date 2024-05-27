@@ -874,6 +874,8 @@ p{
 
 .space{
     position: relative;
+    transition: opacity 150ms linear;
+    opacity: 1;
 }
 
 #board .spaces>:not(:last-child){

@@ -380,7 +380,17 @@ function attack(card,pos,pl,target){
     moveForward(card,pos,pl,target);
     setTimeout(function(){
         card.style.transform="";
-    },500)
+    },500);
+
+    const s=cardSpaces[pl][target];
+    game.timeout(function(){
+        if(!game.canBlock){
+            s.style.opacity=0;
+            setTimeout(function(){
+                s.style.opacity="";
+            },650);
+        }
+    },0);
 
     return game.timeout(function(){
         damage(pl,target);

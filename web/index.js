@@ -688,7 +688,7 @@ c_tomb_raider.init("Tomb Robber",1,0,1,bones,[],a_disentomb,[0,12]);
 c_plasma.init("Plasma Jimmy",3,0,3,energy,[],a_energy_gun,[0,4]);
 c_bone_heap.init("Bone Heap",1,0,2,bones,[],a_enlarge,[5,1]);
 c_hand_tent.init("Hand Tentacle",2,0,4,blood,[s_hand],null,[8,3]);
-c_mirror_tent.init("Mirror Tentacle",1,69,4,blood,[s_mirror],null,[8,4]);
+c_mirror_tent.init("Mirror Tentacle",1,0,4,blood,[s_mirror],null,[8,4]);
 
 // cartas act 3
 
@@ -836,14 +836,24 @@ class GameCard{
 
     updateStat(atkOrHp,stat){
         const scale=2;
-        const alignX=[atk_alignX,hp_alignX][atkOrHp];
+        const alignX=[atk_alignX,hp_alignX-1][atkOrHp];
         let [cardX,cardY]=getBG(this.unsaccable);
+        
+        let alignY,dimY;
+        if(this.card.statSigil!=null){
+            alignY=cardHeight-1-i_stats.dims[1];
+            dimY=cardHeight-alignY-1;
+        }
+        else{
+            alignY=stats_alignY;
+            dimY=i_numbers.dims[1];
+        }
 
         this.ctx.drawImage(i_cards.img,
-            i_cards.skip[0]*cardX+alignX, i_cards.skip[1]*cardY+stats_alignY,
-            i_numbers.dims[0], i_numbers.dims[1],
-            alignX*scale, stats_alignY*scale,
-            i_numbers.dims[0]*scale, i_numbers.dims[1]*scale,
+            i_cards.skip[0]*cardX+alignX, i_cards.skip[1]*cardY+alignY,
+            i_numbers.dims[0]+1, dimY,
+            alignX*scale, alignY*scale,
+            (i_numbers.dims[0]+1)*scale, dimY*scale,
         );
 
         if(stat<0) stat=0;
@@ -1010,8 +1020,6 @@ class GameCard{
             }
         }
         for(let t of game.targets){
-            game.attackTimeout=attack(this.canvas,this.pos,+(this.side==game.myTurn),t);
-
             let opp=game.board[1-game.turn][t];
             game.canBlock=true;
             for(let s of this.sigils){
@@ -1020,6 +1028,7 @@ class GameCard{
                 }
             }
 
+            game.attackTimeout=attack(this.canvas,this.pos,+(this.side==game.myTurn),t);
             if(opp==null){
                 game.tiltScales(this.attack,this,t);
                 await game.sleep(500);
@@ -1475,7 +1484,7 @@ class Game{
             }
             else{
                 card=cards[this.deck.pop()];
-                // card=c_beaver;
+                // card=Math.random()<0.5? c_sparrow: c_bullfrog;
                 cardsLeft=this.deck.length;
             }
         }
@@ -1599,7 +1608,14 @@ class Game{
                     let pos=parseInt(spl[0]),handPos=parseInt(spl[1]),id=parseInt(spl[2]),attack=parseInt(spl[3]),health=parseInt(spl[4]),unsac=parseInt(spl[5]);
 
                     const faceDown=hands[1].children[handPos];
-                    await GameCard.fromCard(allCards[id],unsac==1,attack,health).play(pos,faceDown);
+                    const c=GameCard.fromCard(allCards[id],unsac==1,attack,health);
+                    if(attack!=allCards[id].attack){
+                        c.updateStat(0,attack);
+                    }
+                    if(health!=allCards[id].health){
+                        c.updateStat(1,health);
+                    }
+                    await c.play(pos,faceDown);
                     break;
 
                 case codeHammered:
