@@ -369,6 +369,9 @@ function moveForward(card,pos,pl,target){
     else{
         targetDir=1;
     }
+    if(game.turn!=game.myTurn){
+        targetDir*=-1;
+    }
 
     card.style.transform="translate("+(20*targetDir)+"px,"+(-20*plSign)+"px)";
 }

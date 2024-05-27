@@ -992,7 +992,7 @@ class GameCard{
             opp.damage(this.attack,this);
         }
         else{
-            game.tiltScales(this.attack,this,t);
+            game.tiltScales(this.attack,this,opp.pos);
         }
     }
 
@@ -1180,7 +1180,7 @@ class Game{
 
     clrTimeout(id){
         clearTimeout(id);
-        this.timeouts.remove(id);
+        this.timeouts.delete(id);
     }
 
     itsOver(){
@@ -1475,7 +1475,7 @@ class Game{
             }
             else{
                 card=cards[this.deck.pop()];
-                card=c_beaver;
+                // card=c_beaver;
                 cardsLeft=this.deck.length;
             }
         }
@@ -1591,9 +1591,9 @@ class Game{
                             const sacPos=parseInt(spl[i]);
                             sacAnim(this.board[this.turn][sacPos],1,sacPos);
                         }
-                        await this.sleep(200);
                         sacrifice();
                         await game.resolve();
+                        await this.sleep(200);
                     }
 
                     let pos=parseInt(spl[0]),handPos=parseInt(spl[1]),id=parseInt(spl[2]),attack=parseInt(spl[3]),health=parseInt(spl[4]),unsac=parseInt(spl[5]);
