@@ -1,0 +1,120 @@
+"use strict"
+
+const codeActivated = "A";
+const codeQuit = "Q";
+const codeEndedTurn = "E";
+const codeHammered = "H";
+const codePlayedCard = "P";
+const codeCreateGame = "C";
+const codeJoinGame = "J";
+const codeResign = "R";
+const codeGameOver = "O";
+const codeRejoinGame = "B";
+const codeDeleteOffer = "D";
+const codeListGames = "L";
+const codeDecision = "M";
+
+class Queue {
+    constructor() {
+        this.items = [];
+        this.start=0;
+    }
+  
+    enqueue(element) {
+      this.items.push(element);
+    }
+  
+    dequeue() {
+        const el=this.items[this.start];
+        this.items[this.start]=null;
+        this.start++;
+
+        const maxWaste=10000;
+        if(this.start>=maxWaste){
+            this.start=0;
+            this.items=this.items.slice(maxWaste);
+        }
+        return el;
+    }
+
+    empty(){
+        return this.start==this.items.length
+    }
+
+    clear(){
+        this.items.length=this.start;
+    }
+}
+
+let socket=new WebSocket('ws://localhost:8080/ws');
+let promQueue=new Queue();
+let respQueue=new Queue();
+
+socket.onmessage = function(event) {
+    console.log("got "+event.data);
+    switch (event.data){
+        case codeResign:
+            if(game) game.itsOver();
+            return
+                
+        case codeQuit:
+            console.log("Seu oponente saiu.");
+            return
+
+        case codeRejoinGame:
+            console.log("Seu oponente voltou.");
+            return
+    }
+
+    if(promQueue.empty()){
+        respQueue.enqueue(event.data);
+    }
+    else{
+        promQueue.dequeue()(event.data);
+    }
+};
+
+async function getNextMsg(){
+    if(!respQueue.empty()) return respQueue.dequeue();
+    return new Promise(resolve => promQueue.enqueue(resolve));
+}
+
+function sendMsg(msg){
+    console.log("sent "+msg);
+    socket.send(msg);
+}
+
+socket.onerror = function(event) {
+    throw new Error(event.message);
+};
+
+let socketReady=(async function(){
+    await new Promise((resolve, reject) => {
+        if (socket.readyState == WebSocket.OPEN) {
+            resolve();
+        } else {
+            socket.onopen = () => resolve();
+            socket.onerror = (event) => reject(new Error('WebSocket error: ' + event.message));
+        }
+    });
+
+    let myID=localStorage.getItem("id");
+    if(myID==null){
+        socket.send("-1");
+    }
+    else{
+        socket.send(myID);
+    }
+
+    getNextMsg().then(function(resp){
+        localStorage.setItem("id",resp);
+    });
+    canStart=true;
+    if(isSearchOpen) startGameSearch();
+})();
+
+onbeforeunload=function(){
+    if(game && !game.overBool){
+        this.localStorage.setItem("game",JSON.stringify(game.save()));
+    }
+}
