@@ -393,6 +393,7 @@ s_free_sac.init([2,5],"Many Lives","Quando é sacrificada, em vez de morrer perd
 s_quills.init([4,5],"Sharp Quills","Causa 1 de dano a quem a ataca.");
 s_quills.onReceivedAttack.push(new Listener(listen_me,async function(me,them){
     them.damage(1,me);
+    await game.sleep(500);
 }))
 
 s_skele_spawner.init([5,5],c_skeleton,"Skeleton Crew","Move no fim do turno, deixando um esqueleto onde estava.");
@@ -521,6 +522,12 @@ s_bells.onCardPlayed.push(new Listener(listen_me,async function(me){
 }))
 s_bells.onReceivedAttack.push(new Listener(listen_ally,async function(me,attacker,target){
     if(target.card==c_bell){
+        moveForward(me.canvas,me.pos,+(me.side==game.myTurn),attacker.pos);
+        setTimeout(function(){
+            me.canvas.style.transform="";
+        },200);
+
+        await game.sleep(100);
         await me.hit(attacker);
     }
 }))
@@ -880,6 +887,7 @@ class GameCard{
         for(let l of [...game.playListeners[game.turn]]){
             await l.func(l.caller,this,l.data);
         }
+        game.board[this.side][this.pos]=this;
         this.pos=null;
         for(let s of this.sigils){
             for(let f of s.funcs.onCardPlayed){
@@ -1461,7 +1469,7 @@ class Game{
             }
             else{
                 card=cards[this.deck.pop()];
-                card=c_elk_fawn;
+                // card=c_mrs_bomb;
                 cardsLeft=this.deck.length;
             }
         }

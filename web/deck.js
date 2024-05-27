@@ -357,7 +357,7 @@ function damage(pl,target){
     },500);
 }
 
-function attack(card,pos,pl,target){
+function moveForward(card,pos,pl,target){
     let plSign=pl==0? -1: 1;
     let targetDir;
     if(target<pos){
@@ -371,6 +371,10 @@ function attack(card,pos,pl,target){
     }
 
     card.style.transform="translate("+(20*targetDir)+"px,"+(-20*plSign)+"px)";
+}
+
+function attack(card,pos,pl,target){
+    moveForward(card,pos,pl,target);
     setTimeout(function(){
         card.style.transform="";
     },500)
