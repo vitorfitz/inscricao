@@ -181,9 +181,10 @@ let game;
 
 const listen_me=0,listen_ally=1,listen_enemy=2,listen_any=3;
 class Listener{
-    constructor(type,func){
+    constructor(type,func,prio=0){
         this.type=type;
         this.func=func;
+        this.prio=prio;
     }
 }
 
@@ -346,7 +347,7 @@ s_guardian.init([2,4],"Guardian","Quando o oponente joga uma carta contra um esp
 s_guardian.onCardPlayed.push(new Listener(listen_enemy,async function(me,them){
     if(game.board[me.side][them.pos]==null){
         game.board[me.side][me.pos]=null;
-        await me.place(them.pos);
+        await me.place(them.pos,me.side);
     }
 }));
 
@@ -506,7 +507,7 @@ s_dam.onCardPlayed.push(new Listener(listen_me,async function(me){
 
 s_beehive.init([2,7],"Bees Within","Quando toma dano, adiciona uma abelha 1/1 voadora de custo 0 à sua mão.");
 s_beehive.onReceivedDmg.push(new Listener(listen_me,async function(dmg,me){
-    game.addCardToHand(c_bee,me.side,undefined,undefined,true);
+    await game.addCardToHand(c_bee,me.side,undefined,undefined,true);
     return dmg;
 }))
 
@@ -581,13 +582,17 @@ s_mirror.onCardMoved.push(new Listener(listen_me,async function(me){
 }));
 s_mirror.onCardMoved.push(new Listener(listen_enemy,async function(me){
     updateMirror(me);
-}));
-s_mirror.onCardDied.push(new Listener(listen_enemy,async function(me){
-    updateMirror(me);
-}));
+},-1));
+s_mirror.onCardDied.push(new Listener(listen_enemy,async function(me,dead){
+    if(dead.pos==me.pos){
+        const old=me.attack;
+        me.attack=0;
+        if(old!=0) me.updateStat(0,me.attack);
+    }else updateMirror(me);
+},-1));
 s_mirror.onTurnEnded.push(new Listener(listen_any,async function(me){
     updateMirror(me);
-}));
+},-1));
 
 const cards=[];
 const allCards=[];
@@ -884,17 +889,17 @@ class GameCard{
 
         this.side=game.turn;
         this.pos=pos;
+        game.board[this.side][this.pos]=this;
         for(let l of [...game.playListeners[game.turn]]){
             await l.func(l.caller,this,l.data);
         }
-        game.board[this.side][this.pos]=this;
-        this.pos=null;
         for(let s of this.sigils){
             for(let f of s.funcs.onCardPlayed){
                 if(f.type==listen_me) await f.func(this,this,s.data);
             }
         }
 
+        this.pos=null;
         await this.place(pos,game.turn,true);
         await game.resolve();
 
@@ -962,7 +967,7 @@ class GameCard{
                     const pool=game[listenerRefs[i]];
 
                     for(let lis of listeners){
-                        const obj={func: lis.func, caller: this, data: s.data};
+                        const obj={func: lis.func, caller: this, data: s.data, prio: lis.prio};
                         if([listen_ally,listen_any].includes(lis.type)) pool[this.side].push(obj);
                         if([listen_enemy,listen_any].includes(lis.type)) pool[1-this.side].push(obj);
                     }
@@ -1388,6 +1393,7 @@ class Game{
                     let place=k-1;
                     let temp=pool[k];
                     while(place>=0){
+                        if(pool[k].prio<pool[place].prio) break;
                         if(side==0){
                             if(pool[k].caller.pos>pool[place].caller.pos) break;
                         }
@@ -1469,7 +1475,7 @@ class Game{
             }
             else{
                 card=cards[this.deck.pop()];
-                // card=c_mrs_bomb;
+                card=c_beaver;
                 cardsLeft=this.deck.length;
             }
         }
