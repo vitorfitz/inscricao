@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -190,8 +191,8 @@ func handleMessages() {
 						games[myID] = &Game{gameOffer.conn, otherID, []string{}}
 						games[otherID] = &Game{message.sender, myID, []string{}}
 
-						// coinflip := rand.Intn(2)
-						coinflip := 0
+						coinflip := rand.Intn(2)
+						// coinflip := 0
 						j.Data["myTurn"] = coinflip
 						m1, _ := json.Marshal(j.Data)
 						writeMessage(gameOffer.conn, m1)
