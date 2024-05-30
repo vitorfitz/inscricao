@@ -55,7 +55,7 @@ button{
     cursor: pointer;
     position: relative;
 }
-#decks>:hover::before{
+#decks>:hover::before,#decks>.green::before{
     position: absolute;
     top: 0;
     left: 0;
@@ -63,6 +63,12 @@ button{
     bottom: 0;
     background-color: rgba(75, 160, 75, 0.3);
     content: "";
+}
+#decks>.green::before{
+    background-color: rgba(75, 160, 75, 0.3) !important;
+}
+#decks.copying>:hover::before{
+    background-color: rgba(30, 140, 180, 0.3);
 }
 #decks>:not(:first-child){
     border-top: 0;
@@ -75,8 +81,41 @@ button{
 #decks>*>*{
     padding: 2px 5px;
 }
-#decks>*>:last-child{
+#decks>*>:nth-child(2){
     text-align: right;
+}
+
+#decks .deckOpts{
+    padding: 0;
+    position: absolute;
+    left: 100%;
+    top: 0%;
+    bottom: 0%;
+    overflow: hidden;
+    pointer-events: none;
+    cursor: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+#decks .deckOpts>*{
+    display: flex;
+    translate: -100% 0;
+    transition: translate 100ms linear;
+    transition-delay: 100ms;
+    align-items: center;
+    pointer-events: all;
+    padding-left: 2px;
+}
+
+#decks .deckOpts>*>*{
+    cursor: pointer;
+    height: 25px;
+    margin-left:7px;
+}
+
+#decks:not(.copying)>:hover .deckOpts>*{
+    translate: 0 0;
 }
 
 #right{
@@ -407,6 +446,30 @@ button{
     position: absolute;
     top:25px;
     right:28px;
+}
+
+#sec{
+    display: flex;
+    margin-right: -8px;
+    overflow: hidden;
+    position: relative;
+}
+#sec .caret{
+    width: 32px;
+    cursor: pointer;
+}
+#sec .caret:first-child{
+    transform: rotate(90deg);
+}
+#sec .caret:last-child{
+    transform: rotate(270deg);
+}
+#sec canvas{
+    background-color: #d7e2a3;
+    border: 2px solid #020a11;
+    margin: 0 -2px;
+    position: relative;
+    z-index: 1;
 }
 
 .ttTrigger{

@@ -830,8 +830,7 @@ class GameCard{
 
     updateStat(atkOrHp,stat){
         const scale=2;
-        const extra=3;
-        const alignX=[atk_alignX,hp_alignX-extra][atkOrHp];
+        let alignX=[atk_alignX,hp_alignX-i_numbers.dims[0]-1][atkOrHp];
         let [cardX,cardY]=getBG(this.unsaccable);
         
         let alignY,dimY;
@@ -846,13 +845,13 @@ class GameCard{
 
         this.ctx.drawImage(i_cards.img,
             i_cards.skip[0]*cardX+alignX, i_cards.skip[1]*cardY+alignY,
-            i_numbers.dims[0]+extra, dimY,
+            2*i_numbers.dims[0]+1, dimY,
             alignX*scale, alignY*scale,
-            (i_numbers.dims[0]+extra)*scale, dimY*scale,
+            (2*i_numbers.dims[0]+1)*scale, dimY*scale,
         );
 
         if(stat<0) stat=0;
-        else if(stat>9) stat=9;
+        else if(stat>99) stat=99;
 
         const baseline=[this.baseAttack,this.baseHealth][atkOrHp];
         let color;
@@ -866,7 +865,16 @@ class GameCard{
             color=greenText;
         }
 
-        i_colored_nums[color].draw(this.ctx,scale,stat,0,alignX==atk_alignX? alignX: alignX+extra,stats_alignY);
+        if(atkOrHp==1 && stat<10){
+            alignX+=i_numbers.dims[0]+1;
+        }
+        let place=Math.max(1,10**Math.floor(Math.log10(stat)));
+        while(place>=1){
+            i_colored_nums[color].draw(this.ctx,scale,Math.floor(stat/place),0,alignX==atk_alignX? alignX: alignX,stats_alignY);
+            alignX+=i_numbers.dims[0]+1;
+            stat%=place;
+            place/=10;
+        }
     }
 
     async play(pos,faceDown=null){
@@ -1497,8 +1505,8 @@ class Game{
                 cardsLeft=--this.manasLeft[side];
             }
             else{
-                // card=cards[this.deck.pop()];
-                card=c_sniper;
+                card=cards[this.deck.pop()];
+                // card=c_sniper;
                 cardsLeft=this.deck.length;
             }
         }

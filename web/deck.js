@@ -1176,11 +1176,32 @@ editTitle.addEventListener("click",function(){
     deckTitle.focus();
 });
 
-const manaSel=deckEditDiv.querySelector("select");
+const manaSel=deckEditDiv.querySelectorAll("#sec .caret");
+const manaCanvas=deckEditDiv.querySelector("#sec canvas");
+let selectedMana;
+
+function updateMana(){
+    const ctx=manaCanvas.getContext("2d");
+    ctx.clearRect(0,0,manaCanvas.width,manaCanvas.height);
+    i_portraits.draw(ctx,1.5,...manas[selectedMana].portrait,0,0);
+}
+
+manaSel[0].addEventListener("click",function(){
+    selectedMana--;
+    if(selectedMana<0) selectedMana+=manas.length;
+    updateMana();
+});
+
+manaSel[1].addEventListener("click",function(){
+    selectedMana++;
+    if(selectedMana>=manas.length) selectedMana=0;
+    updateMana();
+});
+
 saveDeck.addEventListener("click",function(){
     const deck=decks[beingEdited];
     deck.name=deckTitle.textContent;
-    deck.mana=manaSel.selectedIndex;
+    deck.mana=selectedMana;
     deckData[beingEdited].name.textContent=deck.name;
     updateDeckSize(deckData[beingEdited].size,beingEdited);
 
@@ -1189,6 +1210,16 @@ saveDeck.addEventListener("click",function(){
     deckEditDiv.style.bottom="100%";
     beingEdited=-1;
 });
+
+let beingCopied=null;
+let copiedEl=null;
+
+function bruh1(){
+    copiedEl.classList.remove("green");
+}
+function bruh2(){
+    copiedEl.classList.add("green");
+}
 
 for(let i=0; i<deckSlots; i++){
     const aDeck=document.createElement("div");
@@ -1205,22 +1236,68 @@ for(let i=0; i<deckSlots; i++){
         name:title,
     });
 
-    aDeck.addEventListener("click",function(){
-        beingEdited=i;
-        deckEditDiv.style.bottom="0";
-        deckEls=[];
-        deckTable.innerHTML="";
-        deckTitle.textContent=decks[i].name;
-        manaSel.selectedIndex=decks[i].mana;
-        updateDeckSize(deckSizeEdit,beingEdited);
-        // deckEditDiv.style.overflow="hidden";
-        // setTimeout(function(){
-        //     deckEditDiv.style.overflow="";
-        // },200);
+    const optElWrapper=document.createElement("div");
+    optElWrapper.className="deckOpts";
+    aDeck.appendChild(optElWrapper);
+    const optEl=document.createElement("div");
+    optElWrapper.appendChild(optEl);
 
-        for(let j=0; j<cards.length; j++){
-            for(let k=0; k<decks[i].cards[j]; k++){
-                cardToTableRow(j);
+    const copyBtn=document.createElement("img");
+    copyBtn.src="icons/copy.svg";
+    optEl.appendChild(copyBtn);
+    const trashBtn=document.createElement("img");
+    trashBtn.src="icons/trash-icon.svg";
+    optEl.appendChild(trashBtn);
+
+    aDeck.addEventListener("click",function(e){
+        if(e.target==copyBtn){
+            beingCopied=i;
+            deckDiv.classList.add("copying");
+            copiedEl=aDeck;
+            aDeck.classList.add("green");
+            aDeck.addEventListener("mouseenter",bruh1);
+            aDeck.addEventListener("mouseleave",bruh2);
+        }
+        else if(e.target==trashBtn){
+            localStorage.removeItem("deck"+i);
+            decks[i].cards=Array.from({ length: cards.length }).fill(0);
+            decks[i].size=0;
+            updateDeckSize(cardCount,i);
+        }
+        else if(e.target!=optEl){
+            if(beingCopied!=null){
+                const d=decks[beingCopied];
+                decks[i].cards=[...d.cards];
+                decks[i].size=d.size;
+                decks[i].mana=d.mana;
+                deckDiv.classList.remove("copying");
+                copiedEl.classList.remove("green");
+                copiedEl.removeEventListener("mouseenter",bruh1);
+                copiedEl.removeEventListener("mouseleave",bruh2);
+                localStorage.setItem("deck"+i,JSON.stringify(decks[i]));
+                updateDeckSize(cardCount,i);
+                beingCopied=null;
+                copiedEl=null;
+            }
+            else{
+                beingEdited=i;
+                deckEditDiv.style.bottom="0";
+                deckEls=[];
+                deckTable.innerHTML="";
+                deckTitle.textContent=decks[i].name;
+                selectedMana=decks[i].mana;
+                updateMana();
+                updateDeckSize(deckSizeEdit,beingEdited);
+                // deckEditDiv.style.overflow="hidden";
+                // setTimeout(function(){
+                //     deckEditDiv.style.overflow="";
+                // },200);
+
+                for(let j=0; j<cards.length; j++){
+                    for(let k=0; k<decks[i].cards[j]; k++){
+                        cardToTableRow(j);
+                    }
+                }       
             }
         }
     })
