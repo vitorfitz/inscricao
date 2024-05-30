@@ -44,7 +44,12 @@ class SFledgling extends Sigil{
         this.biggerMe=biggerMe;
         this.onTurnEnded.push(new Listener(listen_enemy,async function(me){
             let big=GameCard.fromCard(biggerMe);
-            big.health-=(me.card.health-me.health);
+            big.health-=(me.baseHealth-me.health);
+            if(big.baseHealth<me.baseHealth){
+                big.baseHealth=me.baseHealth;
+                big.health+=me.baseHealth-big.baseHealth;
+            }
+            if(big.health!=big.baseHealth || big.baseHealth<me.baseHealth) big.updateStat(1,big.health);
             removeCard(me);
 
             let listenersIHave=new Array(listenerRefs.length).fill(false);
@@ -79,8 +84,15 @@ class SFrozen extends Sigil{
         super.init([3,4],name,desc);
         this.futureMe=futureMe;
         this.onCardDied.push(new Listener(listen_me,async function(me){
-            await (GameCard.fromCard(this.biggerMe,true)).place(me.pos);
-        }))
+            // blockActions++;
+            // updateBlockActions();
+            // game.timeout(function(){
+            //     await (GameCard.fromCard(this.futureMe,true)).place(me.pos);
+            //     blockActions--;
+            //     updateBlockActions();
+            // }.bind(this),650)
+            await (GameCard.fromCard(this.futureMe,true)).place(me.pos,me.side,false,800);
+        }.bind(this)))
     }
 }
 

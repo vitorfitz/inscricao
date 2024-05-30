@@ -267,11 +267,20 @@ s_double_death.onCardDied.push(new Listener(listen_ally,async function(me, them)
         game.bones[me.side]++;
         updateBones(me.side);
         for(let l of game.deathListeners[me.side]){
-            if(l.caller!=me) l.func(l.caller,them,l.data);
+            if(l.caller.card!=me.card) l.func(l.caller,them,l.data);
         }
-        // them.die();
     }
-}))
+}));
+s_double_death.onCardPlayed.push(new Listener(listen_me,async function(me){
+    if(me.side==game.myTurn){
+        game.necroCount++;
+    }
+}));
+s_double_death.onCardDied.push(new Listener(listen_me,async function(me){
+    if(me.inGame && me.side==game.myTurn){
+        game.necroCount--;
+    }
+}));
 
 s_fecundity.init([4,1],"Fecundity","Cria uma cópia na sua mão ao ser jogada.");
 s_fecundity.onCardPlayed.push(new Listener(listen_me,async function(me){
@@ -313,15 +322,15 @@ s_sarc.init(c_mummy_lord,"Fledgling","Se torna uma Múmia 3/4 no próximo turno.
 //     return dmg;
 // }));
 
-s_explosive.init([4,2],"Detonator","Ao morrer causa 10 de dano às cartas adjacentes (na vertical e horizontal).");
+s_explosive.init([4,2],"Detonator","Ao morrer causa 5 de dano às cartas adjacentes (na vertical e horizontal).");
 s_explosive.onCardDied.push(new Listener(listen_me,async function(me,them){
     if(game.board[1-me.side][me.pos]!=null){
-        game.board[1-me.side][me.pos].damage(10,me);
+        game.board[1-me.side][me.pos].damage(5,me);
     }
     for(let i=-dirs[me.side],j=0; j<2; i+=2*dirs[me.side],j++){
         let c=me.pos+i;
         if(c>=0 && c<game.lanes){
-            if(game.board[me.side][c]!=null) game.board[me.side][c].damage(10,me);
+            if(game.board[me.side][c]!=null) game.board[me.side][c].damage(5,me);
         }
     }
 }));
@@ -393,8 +402,10 @@ s_free_sac.init([2,5],"Many Lives","Quando é sacrificada, em vez de morrer perd
 
 s_quills.init([4,5],"Sharp Quills","Causa 1 de dano a quem a ataca.");
 s_quills.onReceivedAttack.push(new Listener(listen_me,async function(me,them){
-    them.damage(1,me);
-    await game.sleep(500);
+    if(game.canBlock){
+        them.damage(1,me);
+        await game.sleep(500);
+    }
 }))
 
 s_skele_spawner.init([5,5],c_skeleton,"Skeleton Crew","Move no fim do turno, deixando um esqueleto onde estava.");
@@ -468,6 +479,7 @@ s_burrow.onFaceDmg.push(new Listener(listen_ally, async function(dmg,me,attacker
     if(game.board[me.side][target]==null){
         game.board[me.side][me.pos]=null;
         game.clrTimeout(game.attackTimeout);
+        game.canBlock=true;
         await me.place(target,me.side);
         await attacker.hit(me);
         return 0;
@@ -478,9 +490,75 @@ s_burrow.onFaceDmg.push(new Listener(listen_ally, async function(dmg,me,attacker
 s_sidestep.init([5,6],null,"Sprinter","Move no fim do seu turno.");
 
 s_sniper.init([6,6],"Sniper","Você escolhe onde essa carta ataca.");
-s_sniper.modifyTargets=function(me){
-    for(let i=0; i<game.targets; i++){
-        // target prompt
+s_sniper.modifyTargets=async function(me){
+    if(game.targets.length>0){
+        if(me.side!=game.myTurn){
+            let msg=await Promise.any([getNextMsg(),game.over]);
+            if(game.overBool) return;
+
+            let targetsStr=msg.substring(2);
+            game.targets=[];
+            if(targetsStr==""){
+                return;
+            }
+
+            const spl=targetsStr.split(" ");
+            for(let i=0; i<spl.length; i++){
+                game.targets.push(parseInt(spl[i]));
+            }
+        }
+        else{
+            const rect=boards[1].getBoundingClientRect();
+            sniperOverlay.style.top=rect.top-nuhuhPadding+"px";
+            sniperOverlay.style.left=rect.left-nuhuhPadding+"px";
+            nuhuhSniper.style.transitionDuration="300ms";
+            nuhuhSniper.style.opacity="0.5";
+
+            let dmgOverlays=[],dmgEvents=[];
+            const numTargets=game.targets.length;
+            game.targets=[];
+            let complete;
+
+            for(let i=0; i<cardSpaces[1].length; i++){
+                const dmgOverlay=document.createElement("canvas");
+                dmgOverlays.push(dmgOverlay);
+                dmgOverlay.width=i_cards.dims[0]*2;
+                dmgOverlay.height=i_cards.dims[1]*2;
+                i_cards.draw(dmgOverlay.getContext("2d"),2,1,3,0,0);
+                boardOverlays[1][i].appendChild(dmgOverlay);
+                dmgOverlay.className="visibleOnHover";
+                
+                dmgEvents.push(()=>{
+                    if(game.targets.length==numTargets) return;
+                    game.targets.push(i);
+                    if(game.targets.length==numTargets){
+                        complete();
+                        return;
+                    }
+                });
+                cardSpaces[1][i].parentNode.parentNode.addEventListener("click",dmgEvents[i]);
+            }
+
+            await Promise.any([game.over,new Promise((resolve)=>{
+                complete=resolve;
+            })]);
+            for(let i=0; i<cardSpaces[1].length; i++){
+                cardSpaces[1][i].parentNode.parentNode.removeEventListener("click",dmgEvents[i]);
+            }
+            for(let i=0; i<dmgOverlays.length; i++){
+                dmgOverlays[i].style.opacity=0;
+            }
+            setTimeout(function(){
+                for(let i=0; i<dmgOverlays.length; i++){
+                    dmgOverlays[i].remove();
+                }
+            },150);
+
+            if(!game.overBool) sendMsg(codeDecision+" "+game.targets.join(" "));
+            nuhuhSniper.style.transitionDuration="100ms";
+            nuhuhSniper.style.opacity="0";
+            await game.sleep(100);
+        }
     }
 }
 
@@ -522,14 +600,16 @@ s_bells.onCardPlayed.push(new Listener(listen_me,async function(me){
     }
 }))
 s_bells.onReceivedAttack.push(new Listener(listen_ally,async function(me,attacker,target){
-    if(target.card==c_bell){
-        moveForward(me.canvas,me.pos,+(me.side==game.myTurn),attacker.pos);
-        setTimeout(function(){
-            me.canvas.style.transform="";
-        },200);
-
-        await game.sleep(100);
-        await me.hit(attacker);
+    if(game.canBlock){
+        if(target.card==c_bell){
+            moveForward(me.canvas,me.pos,+(me.side==game.myTurn),attacker.pos);
+            setTimeout(function(){
+                me.canvas.style.transform="";
+            },200);
+    
+            await game.sleep(100);
+            await me.hit(attacker);
+        }
     }
 }))
 
@@ -603,93 +683,6 @@ c_squirrel.init("Squirrel",0,0,1,blood,[],null,[8,5],false);
 c_skeleton.init("Skeleton",0,1,1,bones,[s_brittle],null,[7,11],false);
 const manas=[c_squirrel,c_skeleton];
 
-c_hopper.init("Curve Hopper",4,2,1,energy,[],null,[0,0]);
-c_adder.init("Adder",2,1,2,blood,[s_death_touch],null,[1,0]);
-c_automaton.init("Automaton",2,1,1,energy,[],null,[2,0]);
-c_banshee.init("Banshee",1,1,1,bones,[s_flying],null,[3,0]);
-c_energy_bot.init("Energy Bot",2,0,1,energy,[s_energy],null,[4,0]);
-c_bloodhound.init("Bloodhound",2,2,4,blood,[s_guardian],null,[5,0]);
-c_bolthound.init("Bolthound",5,2,3,energy,[s_guardian],null,[0,1]);
-c_explode_bot.init("Explode Bot",4,1,1,energy,[s_explosive],null,[1,1]);
-c_mrs_bomb.init("Mrs. Bomb",5,5,5,energy,[s_bomb],null,[2,1]);
-c_bonehound.init("Bonehound",4,2,4,bones,[s_guardian],null,[3,1]);
-c_bullfrog.init("Bullfrog",1,1,2,blood,[s_reach],null,[6,1]);
-c_sniper.init("Sniper Bot",3,1,1,energy,[s_sniper],null,[8,1]);
-c_cat.init("Cat",1,0,1,blood,[s_free_sac],null,[0,2]);
-c_coyote.init("Coyote",2,1,3,bones,[],null,[0,3]);
-c_pharaoh.init("Pharaoh's Pets",5,0,1,bones,[s_free_sac,s_worthy],null,[2,3]);
-c_draugr.init("Draugr",1,0,2,bones,[s_frozen_skele,s_cant_be_sacced],null,[3,3]);
-c_drowned.init("Drowned Soul",4,1,1,bones,[s_aquatic,s_death_touch],null,[4,3]);
-c_elk.init("Elk",2,2,4,blood,[s_sidestep],null,[5,3]);
-c_elk_fawn.init("Elk Fawn",1,1,1,blood,[s_elk_fawn,s_sidestep],null,[6,3]);
-c_family.init("The Walkers",4,1,3,bones,[s_bones],null,[2,4]);
-c_mice.init("Field Mice",2,2,2,blood,[s_fecundity],null,[3,4]);
-c_frank_stein.init("Frank & Stein",3,2,2,bones,[],null,[7,4]);
-c_ghost_ship.init("Ghost Ship",3,0,1,bones,[s_skele_spawner,s_aquatic],null,[2,5]);
-c_gravedigger.init("Gravedigger",2,0,3,bones,[s_digger],null,[3,5]);
-c_grizzly.init("Grizzly",3,4,5,blood,[],null,[6,5]);
-c_gunner.init("Double Gunner",6,2,1,energy,[s_bifurcated],null,[7,5]);
-c_hawk.init("Hawk",2,3,1,blood,[s_flying],null,[0,6]);
-c_hrokkall.init("Hrokkall",1,1,1,blood,[s_aquatic,s_energy],null,[2,6]);
-c_insectodrone.init("Insectodrone",3,1,2,energy,[s_flying],null,[3,6]);
-c_kingfisher.init("Kingfisher",1,1,1,blood,[s_flying,s_aquatic],null,[6,6]);
-c_squirrel_ball.init("Squirrel Ball",1,1,1,blood,[s_sq_spawner],null,[8,6]);
-c_l33pbot.init("L33pbot",1,0,2,energy,[s_reach],null,[0,7]);
-c_magpie.init("Magpie",2,1,1,blood,[s_flying,s_tutor],null,[2,7]);
-// mantis god
-// meat bot
-c_49er.init("49er",2,1,1,energy,[s_sidestep],null,[2,8]);
-c_mole.init("Mole",1,0,5,blood,[s_burrow],null,[3,8]);
-c_mole_man.init("Mole Man",1,0,4,blood,[s_burrow,s_reach],null,[4,8]);
-c_steambot.init("Steambot",6,3,2,energy,[],null,[8,8]);
-c_mummy_lord.init("Mummy Lord",5,3,4,bones,[],null,[4,9]);
-c_necromancer.init("Necromancer",3,1,2,bones,[s_double_death],null,[6,9]);
-c_ouroboros.init("Ouroboros",2,1,1,blood,[s_ouroboros],null,[2,10]);
-c_rabbit.init("Rabbit",0,0,1,bones,[],null,[5,10],false);
-c_raven.init("Raven",2,2,3,blood,[s_flying],null,[6,10]);
-c_revenant.init("Revenant",2,3,1,bones,[s_brittle],null,[7,10]);
-c_stoat.init("Stoat",1,1,3,blood,[],null,[8,10]);
-c_steel_mice.init("Steel Mice",6,1,2,energy,[s_fecundity],null,[0,11]);
-c_salmon.init("Salmon",2,2,2,blood,[s_aquatic,s_sidestep],null,[2,11]);
-c_sarcophagus.init("Sarcophagus",3,0,3,bones,[s_sarc],null,[3,11]);
-c_thicc.init("Thick Droid",4,1,3,energy,[],null,[8,11]);
-c_477.init("Urayuli",4,7,7,blood,[],null,[1,12]);
-c_warren.init("Warren",1,0,3,blood,[s_rabbit],null,[2,12]);
-c_wolf.init("Wolf",2,3,2,blood,[],null,[3,12]);
-// wolf cub
-c_zombie.init("Zombie",1,1,1,bones,[],null,[5,12]);
-c_cockroach.init("Cockroach",3,1,1,bones,[s_undying],null,[8,12]);
-c_bat.init("Bat",3,2,1,bones,[s_flying],null,[0,13]);
-c_beaver.init("Beaver",2,1,4,blood,[s_dam],null,[1,13]);
-c_dam.init("Dam",0,0,2,bones,[s_reach,s_cant_be_sacced],null,[2,13],false);
-c_bee.init("Bee",0,1,1,bones,[s_flying],null,[3,13],false);
-c_beehive.init("Beehive",1,0,2,blood,[s_beehive],null,[4,13]);
-c_black_goat.init("Black Goat",2,0,4,blood,[s_worthy],null,[5,13]);
-// child 13
-c_daus.init("The Daus",2,2,1,blood,[s_bells],null,[7,13]);
-c_bell.init("Bell",0,0,1,blood,[s_cant_be_sacced],null,[8,13],false);
-c_dire_wolf.init("Dire Wolf",3,2,4,blood,[s_extra_attack],null,[1,14]);
-c_rat_king.init("Rat King",2,2,1,blood,[s_bones],null,[2,14]);
-c_raven_egg.init("Raven Egg",1,0,2,blood,[s_raven_egg],null,[3,14]);
-c_alpha.init("Alpha",4,1,3,bones,[s_alpha],null,[4,14]);
-c_mantis.init("Mantis",1,1,1,blood,[s_bifurcated],null,[5,14]);
-c_moose_buck.init("Moose Buck",3,3,7,blood,[s_push],null,[6,14]);
-c_skunk.init("Skunk",1,0,3,blood,[s_stinky],null,[7,14]);
-c_great_white.init("Great White",3,4,2,blood,[s_aquatic],null,[8,14]);
-c_porcupine.init("Porcupine",1,1,2,blood,[s_quills],null,[0,15]);
-// pronghorn
-c_rattler.init("Rattler",4,3,2,bones,[],null,[2,15]);
-c_river_snapper.init("River Snapper",2,1,7,blood,[],null,[3,15]);
-c_sparrow.init("Sparrow",1,1,2,blood,[s_flying],null,[4,15]);
-// strange larva
-c_vulture.init("Turkey Vulture",6,3,5,bones,[s_flying],null,[7,15]);
-c_bone_horn.init("Bone Lord's Horn",6,1,1,bones,[],a_bone_horn,[4,1]);
-c_tomb_raider.init("Tomb Robber",1,0,1,bones,[],a_disentomb,[0,12]);
-c_plasma.init("Plasma Jimmy",3,0,3,energy,[],a_energy_gun,[0,4]);
-c_bone_heap.init("Bone Heap",1,0,2,bones,[],a_enlarge,[5,1]);
-c_hand_tent.init("Hand Tentacle",2,0,4,blood,[s_hand],null,[8,3]);
-c_mirror_tent.init("Mirror Tentacle",1,0,4,blood,[s_mirror],null,[8,4]);
-
 // cartas act 3
 
 a_bone_horn.init([4,0],1,energy,"Bone Horn","Gasta 1 energia: ganhe 3 ossos.",async function(card){
@@ -704,6 +697,7 @@ a_disentomb.init([3,0],1,bones,"Disentomb","Gasta 1 osso: invoca um esqueleto.",
         blockActions++;
         isSaccing=false;
         updateBlockActions();
+        game.tombRobberPresence=true;
     }
 },function(card){
     for(let i=0; i<game.lanes; i++){
@@ -718,7 +712,7 @@ a_energy_gun.init([0,0],1,energy,"Energy Gun","Gasta 1 energia: causa 1 de dano 
     return game.board[1-card.side][card.pos]!=null;
 });
 
-a_enlarge.init([2,1],2,bones,"Enlarge","Gasta 2 ossos: Ganha +1/1.",async function(card){
+a_enlarge.init([2,1],3,bones,"Enlarge","Gasta 3 ossos: Ganha +1/1.",async function(card){
     card.attack++;
     card.health++;
     card.baseAttack++;
@@ -836,7 +830,8 @@ class GameCard{
 
     updateStat(atkOrHp,stat){
         const scale=2;
-        const alignX=[atk_alignX,hp_alignX-1][atkOrHp];
+        const extra=3;
+        const alignX=[atk_alignX,hp_alignX-extra][atkOrHp];
         let [cardX,cardY]=getBG(this.unsaccable);
         
         let alignY,dimY;
@@ -851,9 +846,9 @@ class GameCard{
 
         this.ctx.drawImage(i_cards.img,
             i_cards.skip[0]*cardX+alignX, i_cards.skip[1]*cardY+alignY,
-            i_numbers.dims[0]+1, dimY,
+            i_numbers.dims[0]+extra, dimY,
             alignX*scale, alignY*scale,
-            (i_numbers.dims[0]+1)*scale, dimY*scale,
+            (i_numbers.dims[0]+extra)*scale, dimY*scale,
         );
 
         if(stat<0) stat=0;
@@ -871,7 +866,7 @@ class GameCard{
             color=greenText;
         }
 
-        i_colored_nums[color].draw(this.ctx,scale,stat,0,alignX,stats_alignY);
+        i_colored_nums[color].draw(this.ctx,scale,stat,0,alignX==atk_alignX? alignX: alignX+extra,stats_alignY);
     }
 
     async play(pos,faceDown=null){
@@ -910,6 +905,7 @@ class GameCard{
         }
 
         this.pos=null;
+        game.board[this.side][pos]=null;
         await this.place(pos,game.turn,true);
         await game.resolve();
 
@@ -925,7 +921,7 @@ class GameCard{
         game.dmgQueue.push({card: this,dmg,src});
     }
 
-    async place(pos,t=game.turn,from_hand=false){
+    async place(pos,t=game.turn,from_hand=false,delay=0){
         this.side=t;
         let old_pos=this.pos;
         this.pos=pos;
@@ -952,8 +948,13 @@ class GameCard{
         if(!from_hand){
             const uiTurn=+(this.side!=game.myTurn);
             if(old_pos==null){
-                materialize(this.canvas,uiTurn,pos);
-                await game.sleep(250);
+                if(delay>0) setTimeout(function(){
+                    materialize(this.canvas,uiTurn,pos);
+                }.bind(this),delay);
+                else{
+                    materialize(this.canvas,uiTurn,pos);
+                    await game.sleep(250);
+                }
             }
             else{
                 let dur=move(this.canvas,old_pos,uiTurn,pos);
@@ -1002,7 +1003,8 @@ class GameCard{
             opp.damage(this.attack,this);
         }
         else{
-            game.tiltScales(this.attack,this,opp.pos);
+            await game.tiltScales(this.attack,this,opp.pos);
+            await game.sleep(500);
         }
     }
 
@@ -1030,7 +1032,7 @@ class GameCard{
 
             game.attackTimeout=attack(this.canvas,this.pos,+(this.side==game.myTurn),t);
             if(opp==null){
-                game.tiltScales(this.attack,this,t);
+                await game.tiltScales(this.attack,this,t);
                 await game.sleep(500);
             }
             else{
@@ -1039,7 +1041,7 @@ class GameCard{
 
             game.attacked=opp;
             await game.resolveDamage();
-            if(this.pos==null){
+            if(!this.inGame){
                 break;
             }
         }
@@ -1063,12 +1065,13 @@ let listenerFuncs=["onCardDied", "onCardPlayed", "onReceivedAttack", "onReceived
 const extSource=0;
 
 class Game{
-    constructor(_manas,myTurn,tippingPoint=5,lanes=4){
+    constructor(_manas,myTurn,tippingPoint=5,cardsPerTurn=1,lanes=4){
         this.starts=[0,lanes-1];
         this.ends=[lanes,-1];
         this.tippingPoint=tippingPoint;
         this.manas=_manas;
         this.lanes=lanes;
+        this.cardsPerTurn=cardsPerTurn;
 
         this.board=[];
         this.buffs=[];
@@ -1144,6 +1147,11 @@ class Game{
         this.isResolvingDeaths=false;
         this.attacked=null;
         this.attackTimeout=null;
+        this.turnCount=0;
+
+        this.BSDetector=0;
+        this.necroCount=0;
+        this.tombRobberPresence=false;
 
         for(let j=0; j<2; j++){
             updateBones(j,this);
@@ -1209,8 +1217,8 @@ class Game{
         },250);
 
         setTimeout(function(){
-            this.overProm();
             this.overBool=true;
+            this.overProm();
             for (const t of this.timeouts) {
                 clearTimeout(t);
             }
@@ -1222,6 +1230,7 @@ class Game{
             hoveredTT=null;
             tooltip.style.opacity=0;
             tooltip.style.visibility="hidden";
+            resign.classList.remove("clickedImg");
 
             for(let i=0; i<2; i++){
                 hands[i].innerHTML="";
@@ -1267,7 +1276,7 @@ class Game{
 
             for(let s of card.sigils){
                 for(let f of s.funcs.onCardDied){
-                    await f.func(card,card,s.data);
+                    if(f.type==listen_me) await f.func(card,card,s.data);
                 }
             }
             card.inGame=false;
@@ -1299,7 +1308,7 @@ class Game{
             }
 
             if(card.pos!=null){
-                this.board[card.side][card.pos]=null;
+                if(this.board[card.side][card.pos]==card) this.board[card.side][card.pos]=null;
                 this.bones[card.side]++;
             }
         }
@@ -1351,11 +1360,13 @@ class Game{
         }
 
         this.dmgQueue=q2;
+        let should_sleep=false;
+
         for(let h=0; h<this.dmgQueue.length; h++){
             const card=this.dmgQueue[h].card;
 
-            if(this.dmgQueue[h].src!=null){
-                for(let s of card.sigils){
+            if(this.dmgQueue[h].src instanceof GameCard){
+                for(let s of this.dmgQueue[h].src.sigils){
                     if(s.funcs.onDealtDmg!=null){
                         this.dmgQueue[h].dmg=await s.funcs.onDealtDmg(this.dmgQueue[h].dmg,this.dmgQueue[h].src,card,s.data);
                     }
@@ -1379,13 +1390,16 @@ class Game{
                 this.timeout(function(){
                     card.updateStat(1,hp);
                 },100);
-                if(this.dmgQueue[h].src!=extSource) damage(+(card.side!=game.myTurn),card.pos);
+                if(this.dmgQueue[h].src!=extSource){
+                    damage(+(card.side!=game.myTurn),card.pos);
+                    should_sleep=true;
+                }
             }
         }
         
         this.dmgQueue=[];
         this.isResolvingDamage=false;
-        await this.sleep(500);
+        if(should_sleep) await this.sleep(500);
         await this.resolveDeaths();
     }
 
@@ -1483,8 +1497,8 @@ class Game{
                 cardsLeft=--this.manasLeft[side];
             }
             else{
-                card=cards[this.deck.pop()];
-                // card=Math.random()<0.5? c_sparrow: c_bullfrog;
+                // card=cards[this.deck.pop()];
+                card=c_sniper;
                 cardsLeft=this.deck.length;
             }
         }
@@ -1526,6 +1540,8 @@ class Game{
             blockActions++;
             updateBlockActions();
         }
+        if(this.BSDetector>0) this.BSDetector=0;
+        this.tombRobberPresence=false;
         
         for(let i=game.starts[this.turn]; i!=game.ends[this.turn]; i+=dirs[this.turn]){
             if(this.board[this.turn][i]!=null){
@@ -1541,6 +1557,7 @@ class Game{
         this.turn=1-this.turn;
         this.energy[this.turn]=this.maxEnergy[this.turn];
         game.energize();
+        game.turnCount++;
 
         // await new Promise(function(resolve) {
         //     setTimeout(resolve, 350);
@@ -1557,22 +1574,29 @@ class Game{
                 drawOverlay.style.left=rect.left-nuhuhPadding+"px";
                 nuhuh.style.transitionDuration="300ms";
                 nuhuh.style.opacity="0.5";
+                let rem=Math.min(game.cardsPerTurn,game.turnCount);
 
-                let that=this,wtf=false;
+                let that=this;
                 for(let i=0; i<2; i++){
                     async function myFunc(){
-                        if(wtf) return;
-                        for(let j=0; j<2; j++){
-                            deckPiles[0][j].removeEventListener("click", myFunc);
-                            deckPiles[0][j].style.cursor="";
+                        if(rem==0) return;
+                        rem--;
+                        if(rem==0){
+                            for(let j=0; j<2; j++){
+                                deckPiles[0][j].removeEventListener("click", myFunc);
+                                deckPiles[0][j].style.cursor="";
+                            }
+                            nuhuh.style.transitionDuration="100ms";
+                            nuhuh.style.opacity="0";
                         }
-                        nuhuh.style.transitionDuration="100ms";
-                        nuhuh.style.opacity="0";
+
                         sendMsg(codeDecision+" "+i);
                         await that.drawCard(i);
-                        blockActions--;
-                        updateBlockActions();
-                        wtf=true;
+                        
+                        if(rem==0){
+                            blockActions--;
+                            updateBlockActions();
+                        }
                     }
                     deckPiles[0][i].addEventListener("click",myFunc);
                     deckPiles[0][i].style.cursor="pointer";
@@ -1583,7 +1607,10 @@ class Game{
 
     async opponentsTurn(){
         while(true){
-            let msg=await getNextMsg();
+            let msg=await Promise.any([getNextMsg(),game.over]);
+            if(game.overBool){
+                break;
+            }
             switch (msg[0]){
                 case codeActivated:
                     let actPos=parseInt(msg.substring(2));
@@ -1607,7 +1634,24 @@ class Game{
 
                     let pos=parseInt(spl[0]),handPos=parseInt(spl[1]),id=parseInt(spl[2]),attack=parseInt(spl[3]),health=parseInt(spl[4]),unsac=parseInt(spl[5]);
 
-                    const faceDown=hands[1].children[handPos];
+                    let faceDown;
+                    out: while(true){
+                        const ch=hands[1].children;
+                        for(let i=0,j=0; i<ch.length; i++){
+                            if(!ch[i].classList.contains("ghostCard")){
+                                if(j==handPos){
+                                    faceDown=ch[j];
+                                    break out;
+                                }
+                                j++;
+                            }
+                        }
+                        await new Promise((resolve)=>{
+                            drawProm=resolve;
+                        });
+                    }
+                    drawProm=null;
+
                     const c=GameCard.fromCard(allCards[id],unsac==1,attack,health);
                     if(attack!=allCards[id].attack){
                         c.updateStat(0,attack);
@@ -1621,7 +1665,7 @@ class Game{
                 case codeHammered:
                     let hammeredPos=parseInt(msg.substring(2));
                     let hammeredCard=this.board[game.turn][hammeredPos];
-                    hammeredCard.die();
+                    hammeredCard.damage(25,extSource);
                     await game.resolve();
                     break;
 
@@ -1632,6 +1676,11 @@ class Game{
                 case codeDecision:
                     let manaOrDeck=parseInt(msg.substring(2));
                     await this.drawCard(manaOrDeck);
+                    break;
+
+                case codeBoneBounty:
+                    game.bones[this.turn]+=400;
+                    updateBones(this.turn,this);
                     break;
 
                 default:

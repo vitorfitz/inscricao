@@ -13,6 +13,7 @@ const codeRejoinGame = "B";
 const codeDeleteOffer = "D";
 const codeListGames = "L";
 const codeDecision = "M";
+const codeBoneBounty = "F";
 
 class Queue {
     constructor() {

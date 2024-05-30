@@ -79,6 +79,7 @@ menuOpts[1].addEventListener("click",async function(){
 
 let gameSearchIntv=null,isSearchOpen=false;
 function startGameSearch(){
+    respQueue.clear();
     // gameSearchIntv=setInterval(function(){
     //     searchGames();
     // },1000);
@@ -101,7 +102,7 @@ for(let i=0; i<modals.length; i++){
                 clearInterval(gameSearchIntv);
                 isSearchOpen=false;
             }
-            else if(i==0){
+            else if(i==0 && isPlayClicked){
                 playBtn.classList.remove("waiting");
                 sendMsg(codeDeleteOffer);
             }
@@ -184,6 +185,7 @@ function cardDrawStage1(pl,div){
 }
 
 const margin=parseInt(getComputedStyle(playScr).getPropertyValue('--margin'));
+let drawProm=null;
 function cardDrawStage2(card,pl,justPlayed=false){
     const desiredWidth=(hands[pl].children.length+(justPlayed? 0: 1))*(2*cardWidth+margin)-margin;
     const desiredPos=(innerWidth+desiredWidth)/2-2*cardWidth;
@@ -201,7 +203,12 @@ function cardDrawStage2(card,pl,justPlayed=false){
     void card.offsetHeight;
     card.style.top="0";
 
-    game.timeout(function(){
+    setTimeout(function(){
+        if(game.overBool){
+            card.remove();
+            return;
+        }
+
         card.classList.remove("adding");
         setTimeout(function(){
             card.classList.remove("suppressEvents");
@@ -209,6 +216,7 @@ function cardDrawStage2(card,pl,justPlayed=false){
         card.style.left="";
         card.style.top="";
         hands[pl].appendChild(card);
+        if(drawProm) drawProm();
         hands[pl].style.width="";
         if(finishedDrawing && hands[pl].children.length==game.startCards+game.startMana){
             finishedDrawing();
@@ -270,7 +278,17 @@ function playCard(card,pl,target,nc=null){
     const div=document.createElement("div");
     div.className="ghostCard";
     const myRect=card.getBoundingClientRect();
-    try{hands[pl].replaceChild(div,card);}catch(_){}
+
+    if(card.classList.contains("ghostCard")){
+        card=card.nextSibling;
+        console.log("saved?");
+        // console.warn(faceDown);
+    }
+
+    // try{hands[pl].replaceChild(div,card);}catch(_){
+    //     debugger;
+    // }
+    hands[pl].replaceChild(div,card);
     void div.offsetHeight;
     div.style.width="0px";
 
@@ -295,7 +313,8 @@ function playCard(card,pl,target,nc=null){
     if(pl==1 && nc!=null){
         trans.style.transform="rotateY(180deg)";
         setTimeout(function(){
-            try{trans.replaceChild(nc,card);}catch(_){}
+            // try{trans.replaceChild(nc,card);}catch(_){debugger;}
+            trans.replaceChild(nc,card);
             nc.classList.add("suppressEvents");
         },100);
     }
@@ -370,6 +389,9 @@ function moveForward(card,pos,pl,target){
         targetDir=1;
     }
     if(game.turn!=game.myTurn){
+        targetDir*=-1;
+    }
+    if(game.myTurn==1){
         targetDir*=-1;
     }
 
@@ -528,6 +550,33 @@ resign.addEventListener("mouseleave",function(){
     resign.classList.remove("clickedImg");
 });
 
+const bsPopup=document.querySelector("#cut_the_bs");
+const bsBtn=bsPopup.querySelector("button");
+bsBtn.addEventListener("click",function(){
+    game.bones[game.myTurn]+=400;
+    updateBones(game.myTurn);
+    bsPopup.style.opacity="0";
+    bsPopup.style.visibility="hidden";
+    bsPopup.style.transitionDuration="";
+    blockActions--;
+    updateBlockActions();
+    game.BSDetector=-1;
+    sendMsg(codeBoneBounty);
+});
+
+function BSDetected(){
+    if(game.BSDetector<0) return;
+
+    game.BSDetector++;
+    if(game.BSDetector>2){
+        bsPopup.style.opacity="1";
+        bsPopup.style.visibility="visible";
+        bsPopup.style.transitionDuration="400ms";
+        blockActions++;
+        updateBlockActions();
+    }
+}
+
 let sacs=0;
 let sacOverlays=[];
 let sacCards=[];
@@ -548,9 +597,13 @@ function sacAnim(card,side,pos){
 }
 
 function sacrifice(){
+    let catsAmongUs=false;
     for(let i=0; i<sacCards.length; i++){
         if(!sacCards[i].card.hasSigil(s_free_sac)){
             sacCards[i].die();
+        }
+        else{
+            catsAmongUs=true;
         }
         // else{
         //     sacCards[i].damage(1,extSource);
@@ -562,6 +615,7 @@ function sacrifice(){
     }
     sacOverlays=[];
     sacCards=[];
+    return catsAmongUs;
 }
 
 for(let h=0; h<cardSpacesBase[0].length; h++){
@@ -572,8 +626,13 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
             const card=game.board[game.myTurn][i];
             if(card==null) return;
             cancelHammer();
+            
             sendMsg(codeHammered+" "+card.pos);
-            card.die();
+            card.damage(25,extSource);
+            if(game.tombRobberPresence && game.necroCount>0 && card.card==c_skeleton && card.unsaccable){
+                BSDetected();
+            }
+
             await game.resolve();
             blockActions--;
             updateBlockActions();
@@ -627,7 +686,10 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
                     for(let i=0; i<sacCards.length; i++){
                         sacPos.push(sacCards[i].pos);
                     }
-                    sacrifice();
+                    const catsAmongUs=sacrifice();
+                    if(catsAmongUs && selectedCard.card.hasSigil(s_fecundity) && selectedCard.card.cost<=2){
+                        BSDetected();
+                    }
 
                     boards[0].classList.remove("cardsClickable");
                     hands[0].classList.remove("cardsClickable");
@@ -644,16 +706,16 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
             const played=selectedCard;
             const handIndex=game.hand.indexOf(selectedCard);
 
+            let msgVals=[codePlayedCard,i,handIndex,...played.toSocket(),...sacPos];
+            sacPos=[];
+            sendMsg(msgVals.join(" "));
+
             await selectedCard.play(i);
             if(!isSaccing){
                 blockActions--;
                 updateBlockActions();
                 isSaccing=true;
             }
-
-            let msgVals=[codePlayedCard,i,handIndex,...played.toSocket(),...sacPos];
-            sacPos=[];
-            sendMsg(msgVals.join(" "));
         }
     });
 }
@@ -706,7 +768,7 @@ function playScreen(i,chosen,creator,joiner){
         _manas=[theirJSON.mana,myJSON.mana];
     }
 
-    game=new Game(_manas,theirJSON.myTurn,creator.tippingPoint);
+    game=new Game(_manas,theirJSON.myTurn,creator.tippingPoint,creator.cardsPerTurn);
     game.freshStart(deckToArray(decks[chosen]));
     game.initConstants();
 
@@ -814,11 +876,9 @@ function showError(msg,i){
     },2000);
 }
 
-const waitSpan=document.querySelector("#waitSpan");
-const okSpan=document.querySelector("#okSpan");
-
 const scaleInput=document.querySelector("#sc");
 const nameInput=document.querySelector("#name");
+const cptInput=document.querySelector("#cpt");
 
 function validateDeck(i){
     let chosen=select.value;
@@ -832,10 +892,14 @@ function validateDeck(i){
     return chosen;
 }
 
+let isPlayClicked=false;
 playBtn.addEventListener("click",async function(){
+    if(isPlayClicked) return;
+    respQueue.clear();
     let chosen=validateDeck(0);
     if(chosen==-1) return;
 
+    isPlayClicked=true;
     playBtn.classList.add("waiting");
     await socketReady;
 
@@ -843,6 +907,7 @@ playBtn.addEventListener("click",async function(){
         name: nameInput.value,
         data:{
             tippingPoint: parseInt(scaleInput.value),
+            cardsPerTurn: parseInt(cptInput.value),
             mana: decks[chosen].mana,
         }
     }
@@ -851,16 +916,21 @@ playBtn.addEventListener("click",async function(){
     let msg=await getNextMsg();
     if(msg!="{}"){
         let msg2=JSON.parse(msg);
-        showError(msg2,0);
+        showError(msg2.error,0);
+        isPlayClicked=false;
         return;
     }
 
     let otherPlayer=await getNextMsg();
     playBtn.classList.remove("waiting");
-    if(otherPlayer=="{}") return; // was deleted
+    if(otherPlayer=="{}"){ // was deleted
+        isPlayClicked=false;
+        return;
+    }
 
     let otherJSON=JSON.parse(otherPlayer);
     playScreen(0,chosen,json.data,otherJSON);
+    isPlayClicked=false;
 });
 
 const findErrorEl=document.querySelector("#fgError");
@@ -896,7 +966,7 @@ async function searchGames(){
 
             const showInfo=document.createElement("div")
             info.appendChild(showInfo);
-            showInfo.innerHTML=`<div><div>Limite da balança</div><div>`+p[i].data.tippingPoint+`</div></div>`
+            showInfo.innerHTML=`<div><div>Limite da balança</div><div>`+p[i].data.tippingPoint+`</div></div><div><div>Cartas por turno</div><div>`+p[i].data.cardsPerTurn+`</div></div>`
 
             info.addEventListener("click",function(){
                 showInfo.classList.toggle("visible");
@@ -942,14 +1012,19 @@ async function searchGames(){
 
 const myDecks=playScr.querySelector("#myDecks");
 const nuhuh=document.querySelector("#nuhuh");
-const drawOverlay=document.createElement("canvas");
-const nuhuhShadow=50,nuhuhCorner=70,nuhuhPadding=70;
-
-drawOverlay.width=myDecks.offsetWidth+2*nuhuhPadding;
-drawOverlay.height=myDecks.offsetHeight+2*nuhuhPadding;
+const nuhuhPadding=70;
+const drawOverlay=drawNuhuh(myDecks.offsetWidth+2*nuhuhPadding,myDecks.offsetHeight+2*nuhuhPadding,50,70);
 nuhuh.appendChild(drawOverlay);
 
-{
+const nuhuhSniper=document.querySelector("#nuhuhSniper");
+const sniperOverlay=drawNuhuh(boards[1].offsetWidth+2*nuhuhPadding,boards[1].offsetHeight+2*nuhuhPadding,50,70);
+nuhuhSniper.appendChild(sniperOverlay);
+
+function drawNuhuh(w,h,shadow,corner){
+    const drawOverlay=document.createElement("canvas");
+    drawOverlay.width=w;
+    drawOverlay.height=h;
+
     const ctx=drawOverlay.getContext("2d");
     const put=ctx.getImageData(0, 0, drawOverlay.width, drawOverlay.height);
     const img=put.data;
@@ -958,20 +1033,20 @@ nuhuh.appendChild(drawOverlay);
     for(let dir1=1,i=0; dir1>=-1; dir1-=2,i++){
         for(let dir2=1,j=0; dir2>=-1; dir2-=2,j++){
             const extremes=[[0,dims[0]][i],[0,dims[1]][j]];
-            const centers=[extremes[0]+dir1*(nuhuhCorner+nuhuhShadow),extremes[1]+dir2*(nuhuhCorner+nuhuhShadow)];
+            const centers=[extremes[0]+dir1*(corner+shadow),extremes[1]+dir2*(corner+shadow)];
 
             for(let k=extremes[0]; k!=centers[0]; k+=dir1){
                 for(let l=extremes[1]; l!=centers[1]; l+=dir2){
                     const dist=Math.sqrt((k-centers[0])**2+(l-centers[1])**2);
                     let transp;
-                    if(dist<=nuhuhCorner){
+                    if(dist<=corner){
                         transp=0;
                     }
-                    else if(dist>=nuhuhCorner+nuhuhShadow){
+                    else if(dist>=corner+shadow){
                         transp=255;
                     }
                     else{
-                        transp=Math.round(255*(dist-nuhuhCorner)/nuhuhShadow);
+                        transp=Math.round(255*(dist-corner)/shadow);
                     }
                     const pixel=[0,0,0,transp];
                     for(let m=0; m<4; m++){
@@ -980,14 +1055,14 @@ nuhuh.appendChild(drawOverlay);
                 }
             }
 
-            const startCenter=[0,dims[j]][i]+(nuhuhCorner+nuhuhShadow)*dir1;
+            const startCenter=[0,dims[j]][i]+(corner+shadow)*dir1;
             const endCenter=dims[j]-startCenter;
             if((startCenter>=endCenter+dir1)==1-i) continue;
             const startEdge=[0,0,dims[1],dims[0]][2*i+j];
-            const endEdge=startEdge+dir1*nuhuhShadow;
+            const endEdge=startEdge+dir1*shadow;
 
             for(let k=startEdge; k!=endEdge; k+=dir1){
-                const transp=Math.round(255*(1-Math.abs(k-startEdge)/nuhuhShadow));
+                const transp=Math.round(255*(1-Math.abs(k-startEdge)/shadow));
                 const pixel=[0,0,0,transp];
                 for(let l=startCenter; l!=endCenter+dir1; l+=dir1){
                     for(let m=0; m<4; m++){
@@ -1000,6 +1075,7 @@ nuhuh.appendChild(drawOverlay);
     }
 
     ctx.putImageData(put,0,0);
+    return drawOverlay;
 }
 
 // deck
@@ -1007,7 +1083,7 @@ nuhuh.appendChild(drawOverlay);
 const deckSlots=9;
 const copyLimit=2;
 const minCards=20;
-const numManas=10;
+const numManas=20;
 const deckDiv=document.querySelector("#decks");
 const deckEditDiv=document.querySelector("#edit");
 const deckTable=deckEditDiv.querySelector("#cards_in_deck");
@@ -1395,7 +1471,7 @@ function matchesSigils(card){
     return true;
 }
 
-let shownCards=cards;
+let shownCards=[...cards];
 function calcFilters(){
     clearInterval(filter_intv);
     shownCards=[];
@@ -1450,6 +1526,14 @@ function updatePage(curr){
 }
 
 function showCardPages(){
+    shownCards.sort(function(a,b){
+        if(b.element!=a.element){
+           return a.element-b.element;
+        }
+        else{
+            return a.cost-b.cost;
+        }
+    });
     cardsDiv.innerHTML="";
     pages=[];
 
