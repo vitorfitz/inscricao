@@ -15,6 +15,9 @@ const codeListGames = "L";
 const codeDecision = "M";
 const codeBoneBounty = "F";
 
+const modeAct1=0;
+const modeAct2=1;
+
 class Queue {
     constructor() {
         this.items = [];
@@ -56,7 +59,7 @@ let promQueue=new Queue();
 let respQueue=new Queue();
 
 socket.onmessage = function(event) {
-    console.log("got "+event.data);
+    // console.log("got "+event.data);
     switch (event.data){
         case codeResign:
             if(game) game.itsOver();
@@ -85,7 +88,7 @@ async function getNextMsg(){
 }
 
 function sendMsg(msg){
-    console.log("sent "+msg);
+    // console.log("sent "+msg);
     socket.send(msg);
 }
 

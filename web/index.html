@@ -2,6 +2,7 @@
 <html>
     <head>
         <link rel="stylesheet" href="index.css">
+        <link rel="stylesheet" href="arena.css">
         <title>Inscrição</title>
     </head>
     <body id="important">
@@ -139,16 +140,25 @@
                 <div class="opt"></div>
             </div>
             <div class="modalBG" id="pregame">
-                <div>
-                    <canvas class="close ret" height="34" width="34" style="width: 26px;"></canvas>
-                    <p>Nome da sala: <input id="name" style="width: 80px;"></p>
-                    <p>Seu deck: <span class="deckSel"></span> </p>
-                    <p>Limite da balança: <input id="sc" type="number" value="7" min="1" max="16" style="width: 40px;"> </p>
-                    <p>Cartas por turno: <input id="cpt" type="number" value="2" min="1" max="3" style="width: 40px;"> </p>
-                    <button class="play">
-                        <span id="okSpan">Criar Partida</span>
-                        <span id="waitSpan">Esperando...</span>
-                    </button>
+                <div style="padding: 0;">
+                    <div id="act_sel">
+                        <h2 style="font-size: 20px;">
+                            <span>Ato 2</span>
+                            <button><img src="icons/circle-arrow.svg" alt=""></button>
+                            <canvas class="close ret" height="34" width="34" style="width: 26px;"></canvas>
+                        </h2>
+                    </div>
+                    <div id="configs" class="a2">
+                        <p>Nome da sala: <input id="name" style="width: 80px;"></p>
+                        <p class="a2">Seu deck: <span class="deckSel"></span> </p>
+                        <p class="a1">Vida total: <input id="hp" type="number" value="30" min="1" max="50" style="width: 40px;"> </p>
+                        <p>Limite da balança: <input id="sc" type="number" value="7" min="1" max="16" style="width: 40px;"> </p>
+                        <p>Cartas por turno: <input id="cpt" type="number" value="2" min="1" max="3" style="width: 40px;"> </p>
+                        <button class="play">
+                            <span id="okSpan">Criar Partida</span>
+                            <span id="waitSpan">Esperando...</span>
+                        </button>
+                    </div>
                     <div class="error hideError"></div>
                 </div>
             </div>
@@ -231,11 +241,14 @@
                 </div>
             </div>
         </div>
+        <div id="card_choice"></div>
         <div id="tooltip"></div>
+        
         <script defer src="init.js"></script>
         <script defer src="index.js"></script>
         <script defer src="cards.js"></script>
         <script defer src="deck.js"></script>
         <script defer src="socket.js"></script>
+        <script defer src="arena.js"></script>
     </body>
 </html>

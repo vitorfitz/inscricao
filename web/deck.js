@@ -215,7 +215,7 @@ function cardDrawStage2(card,pl,justPlayed=false){
         },200)
         card.style.left="";
         card.style.top="";
-        hands[pl].appendChild(card);
+        if(!card.classList.contains("wackyStuff")) hands[pl].appendChild(card);
         if(drawProm) drawProm();
         hands[pl].style.width="";
         if(finishedDrawing && hands[pl].children.length==game.startCards+game.startMana){
@@ -281,14 +281,15 @@ function playCard(card,pl,target,nc=null){
 
     if(card.classList.contains("ghostCard")){
         card=card.nextSibling;
-        console.log("saved?");
+        console.log("saved?",card);
         // console.warn(faceDown);
     }
 
-    // try{hands[pl].replaceChild(div,card);}catch(_){
-    //     debugger;
-    // }
-    hands[pl].replaceChild(div,card);
+    try{hands[pl].replaceChild(div,card);}catch(_){
+        div.remove();
+        card.classList.add("wackyStuff");
+    }
+    // hands[pl].replaceChild(div,card);
     void div.offsetHeight;
     div.style.width="0px";
 
@@ -327,6 +328,7 @@ function playCard(card,pl,target,nc=null){
         const c2=nc==null? card: nc;
         targetEl.appendChild(c2);
         trans.remove();
+        c2.classList.remove("wackyStuff");
         setTimeout(function(){
             c2.classList.remove("suppressEvents");
         },200)
@@ -497,6 +499,7 @@ function setScale(val){
 let blockActions=0;
 const bell=document.querySelector("#bell");
 bell.addEventListener("click",async function(){
+    console.log(blockActions);
     if(!blockActions){
         unselectCard();
         sendMsg(codeEndedTurn);
@@ -695,9 +698,11 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
                     hands[0].classList.remove("cardsClickable");
                     isSaccing=false;
                     sacs=0;
-                    blockActions++;
+                    blockActions+=2;
                     updateBlockActions();
                     await game.resolve();
+                    blockActions--;
+                    updateBlockActions();
                 }
             }
         }
@@ -744,22 +749,7 @@ function updateScale(damage){
     }
 }
 
-let finishedDrawing=null;
-function playScreen(i,chosen,creator,joiner){
-    menu.style.visibility="hidden";
-    playScr.style.visibility="visible";
-    closeModal(modals[i]);
-
-    let myJSON,theirJSON;
-    if(i==0){
-        myJSON=creator;
-        theirJSON=joiner;
-    }
-    else{
-        myJSON=joiner;
-        theirJSON=creator;
-    }
-
+function newGame(chosen,myJSON,theirJSON,creator){
     let _manas;
     if(theirJSON.myTurn==0){
         _manas=[myJSON.mana,theirJSON.mana];
@@ -771,6 +761,12 @@ function playScreen(i,chosen,creator,joiner){
     game=new Game(_manas,theirJSON.myTurn,creator.tippingPoint,creator.cardsPerTurn);
     game.freshStart(deckToArray(decks[chosen]));
     game.initConstants();
+    playScreen();
+}
+
+let finishedDrawing=null;
+function playScreen(){
+    playScr.style.visibility="visible";
 
     for(let i=0; i<2; i++){
         const r=filled_canvas(2,i_cards,[2,2]);
@@ -778,7 +774,7 @@ function playScreen(i,chosen,creator,joiner){
         deckSpaces[i][0].appendChild(r);
         deckPiles[i][0]=r;
 
-        const r2=manas[_manas[theirJSON.myTurn==0? i: 1-i]].render(2);
+        const r2=manas[game.manas[game.myTurn==0? i: 1-i]].render(2);
         deckSpaces[i][1].innerHTML="";
         deckSpaces[i][1].appendChild(r2);
         deckPiles[i][1]=r2;
@@ -790,7 +786,7 @@ function playScreen(i,chosen,creator,joiner){
     const ctx=scaleCanvas.getContext("2d");
     ctx.clearRect(0,0,scaleCanvas.width,scaleCanvas.height);
     ctx.lineWidth=2;
-    const step=(scaleCanvas.height-ctx.lineWidth)/(2*creator.tippingPoint);
+    const step=(scaleCanvas.height-ctx.lineWidth)/(2*game.tippingPoint);
     ctx.strokeStyle="#7f7f7f";
     const midWidth=20;
     const extWidth=30;
@@ -801,12 +797,12 @@ function playScreen(i,chosen,creator,joiner){
     ctx.lineTo(midOffset,scaleCanvas.height);
     ctx.stroke();
 
-    for(let i=0; i<=2*creator.tippingPoint; i++){
+    for(let i=0; i<=2*game.tippingPoint; i++){
         let tam;
-        if(i==0 || i==2*creator.tippingPoint){
+        if(i==0 || i==2*game.tippingPoint){
             tam=extWidth;
         }
-        else if(i==creator.tippingPoint){
+        else if(i==game.tippingPoint){
             tam=midWidth;
         }
         else{
@@ -879,8 +875,9 @@ function showError(msg,i){
 const scaleInput=document.querySelector("#sc");
 const nameInput=document.querySelector("#name");
 const cptInput=document.querySelector("#cpt");
+const lifeInput=document.querySelector("#hp");
 
-function validateDeck(i){
+function validateDeck(){
     let chosen=select.value;
     if(chosen==null || chosen==""){
         chosen=-1;
@@ -892,12 +889,29 @@ function validateDeck(i){
     return chosen;
 }
 
+const actClasses=["a1","a2"];
+const actText=["Ato 1","Ato 2"];
+let act=1;
+const actSwitcher=pregame.querySelector("h2 button");
+const actTitle=pregame.querySelector("h2 span");
+const configDiv=pregame.querySelector("#configs");
+
+actSwitcher.addEventListener("click",function(){
+    configDiv.classList.remove(actClasses[act]);
+    act=1-act;
+    configDiv.classList.add(actClasses[act]);
+    actTitle.textContent=actText[act];
+});
+
 let isPlayClicked=false;
 playBtn.addEventListener("click",async function(){
     if(isPlayClicked) return;
     respQueue.clear();
-    let chosen=validateDeck(0);
-    if(chosen==-1) return;
+    let chosen;
+    if(act==modeAct2){
+        chosen=validateDeck();
+        if(chosen==-1) return;
+    }
 
     isPlayClicked=true;
     playBtn.classList.add("waiting");
@@ -908,8 +922,14 @@ playBtn.addEventListener("click",async function(){
         data:{
             tippingPoint: parseInt(scaleInput.value),
             cardsPerTurn: parseInt(cptInput.value),
-            mana: decks[chosen].mana,
+            mode: act,
         }
+    }
+    if(act==modeAct1){
+        json.data.lifeTotal=parseInt(lifeInput.value);
+    }
+    else if(act==modeAct2){
+        json.data.mana=decks[chosen].mana;
     }
     
     sendMsg(codeCreateGame+JSON.stringify(json));
@@ -929,8 +949,15 @@ playBtn.addEventListener("click",async function(){
     }
 
     let otherJSON=JSON.parse(otherPlayer);
-    playScreen(0,chosen,json.data,otherJSON);
+    menu.style.visibility="hidden";
     isPlayClicked=false;
+    closeModal(modals[0]);
+    if(act==modeAct2){
+        newGame(chosen,json.data,otherJSON,json.data);
+    }
+    else if(act==modeAct1){
+        newRun(json.data,otherJSON,json.data);
+    }
 });
 
 const findErrorEl=document.querySelector("#fgError");
@@ -957,7 +984,7 @@ async function searchGames(){
             name.textContent=p[i].name;
             game.appendChild(name);
             const mode=document.createElement("span");
-            mode.textContent="Act 2";
+            mode.textContent=actText[p[i].data.mode];
             game.appendChild(mode);
 
             const info=document.createElement("div");
@@ -967,6 +994,7 @@ async function searchGames(){
             const showInfo=document.createElement("div")
             info.appendChild(showInfo);
             showInfo.innerHTML=`<div><div>Limite da balança</div><div>`+p[i].data.tippingPoint+`</div></div><div><div>Cartas por turno</div><div>`+p[i].data.cardsPerTurn+`</div></div>`
+            if(p[i].data.mode==modeAct1) showInfo.innerHTML+=`<div><div>Vida total</div><div>`+p[i].data.lifeTotal+`</div></div>`;
 
             info.addEventListener("click",function(){
                 showInfo.classList.toggle("visible");
@@ -981,12 +1009,17 @@ async function searchGames(){
 
             let closure_i=i;
             join.addEventListener("click",async function(){
-                let chosen=validateDeck(1);
-                if(chosen==-1) return;
+                let chosen;
+                if(p[closure_i].data.mode==modeAct2){
+                    chosen=validateDeck();
+                    if(chosen==-1) return;
+                }
 
                 const json={
-                    name: p[closure_i].name,
-                    data:{
+                    name: p[closure_i].name
+                }
+                if(p[closure_i].data.mode==modeAct2){
+                    json.data={
                         mana: decks[chosen].mana
                     }
                 }
@@ -999,7 +1032,14 @@ async function searchGames(){
                     return;
                 }
 
-                playScreen(1,chosen,otherJSON,json.data);
+                menu.style.visibility="hidden";
+                closeModal(modals[1]);
+                if(otherJSON.mode==modeAct2){
+                    newGame(chosen,json.data,otherJSON,otherJSON);
+                }
+                else if(otherJSON.mode==modeAct1){
+                    newRun(json.data,otherJSON,otherJSON);
+                }
             });
 
             gameList.appendChild(game);

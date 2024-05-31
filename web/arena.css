@@ -1,0 +1,10 @@
+#card_choice{
+    position: absolute;
+    visibility: hidden;
+    top:0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-image: url("imgs/wood.avif");
+    background-size: cover;
+}

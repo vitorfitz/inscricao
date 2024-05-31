@@ -709,6 +709,52 @@ button{
     animation: fadeIn 100ms linear forwards;
 }
 
+#act_sel{
+    padding-top:20px;
+    padding-bottom: 18px;
+    padding-left: 32px;
+    padding-right: 32px;
+    background-color: #8f8f8f;
+}
+#configs{
+    padding-top:20px;
+    padding-bottom: 30px;
+    padding-left: 32px;
+    padding-right: 32px;
+}
+#pregame>*{
+    width: 314px;
+}
+#pregame .close{
+    margin-top: -6px;
+}
+#pregame h2 button{
+    margin-left: 17px;
+    border-radius: 50%;
+    padding: 6px;
+    border-radius: 7px;
+    background-color: #5f6f9f;
+}
+#pregame img{
+    transform: rotate(-15deg);
+    width: 18px;
+    filter: invert(80%);
+}
+#pregame h2{
+    display: flex;
+    align-items: center;
+}
+#pregame .close{
+    margin-left: auto;
+}
+
+#configs.a1 p[class]:not(.a1){
+    display: none;
+}
+#configs.a2 p[class]:not(.a2){
+    display: none;
+}
+
 .play{
     margin: 0 auto;
     margin-top: 30px;
@@ -868,12 +914,9 @@ button{
     --margin:5px;
 }
 
-h3{
+h1,h2,h3,p{
     margin: 0;
     font-size: inherit;
-}
-p{
-    margin: 0;
 }
 
 .cards_wrapper{

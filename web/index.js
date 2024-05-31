@@ -78,6 +78,7 @@ function checkCost(element,cost){
 }
 
 function updateBlockActions(){
+    console.log("BA"+blockActions);
     if(selectedCard!=null){
         if(blockActions==0 || !isSaccing) boards[0].classList.add("spacesClickable");
         else boards[0].classList.remove("spacesClickable");
@@ -267,7 +268,7 @@ s_double_death.onCardDied.push(new Listener(listen_ally,async function(me, them)
         game.bones[me.side]++;
         updateBones(me.side);
         for(let l of game.deathListeners[me.side]){
-            if(l.caller.card!=me.card) l.func(l.caller,them,l.data);
+            if(l.caller.card!=me.card) await l.func(l.caller,them,l.data);
         }
     }
 }));
@@ -730,13 +731,23 @@ function shuffle(array) {
 
 class GameCard{
     static fromCard(c,unsac=false,attack=c.attack,health=c.health){
+        let mc=null;
+        if(c instanceof ModdedCard){
+            mc=c;
+            c=c.card;
+        }
+
         let sigils=[];
         for(let i=0; i<c.sigils.length; i++){
             sigils.push(new GameSigil(c.sigils[i]));
         }
         let activated=c.activated? new GameActivated(c.activated): null;
 
-        return new GameCard({
+        if(mc!=null){
+            if(mc.activated) c=activated=mc.activated;
+        }
+
+        const nc=new GameCard({
             card:c,
             attack,
             health,
@@ -745,7 +756,12 @@ class GameCard{
             unsaccable:unsac || c.hasSigil(s_cant_be_sacced),
             sigils: sigils,
             activated: activated
-        })
+        });
+
+        if(mc!=null){
+            // add sigils
+        }
+        return nc;
     }
 
     toJSON(){
@@ -817,7 +833,13 @@ class GameCard{
         }
     }
 
+    debugInfo(){
+        return this.card.name+" @("+this.side+","+this.pos+")";
+    }
+
     async activate(){
+        //console.log("<ACTIVATING "+this.debugInfo());
+
         const el=this.sigilEls[0];
         el.classList.add("clicked");
         setTimeout(function(){
@@ -826,6 +848,8 @@ class GameCard{
 
         await this.activated.funcs.func(this,this.activated.data);
         await game.resolve();
+
+        //console.log(">ACTIVATING "+this.debugInfo());
     }
 
     updateStat(atkOrHp,stat){
@@ -878,6 +902,8 @@ class GameCard{
     }
 
     async play(pos,faceDown=null){
+        // console.log("<PLAYING "+this.debugInfo());
+
         spendResource(this.card.element,this.card.cost);
         if(game.turn==game.myTurn){
             const ind=game.hand.indexOf(this);
@@ -904,11 +930,17 @@ class GameCard{
         this.pos=pos;
         game.board[this.side][this.pos]=this;
         for(let l of [...game.playListeners[game.turn]]){
+            // console.log("<ONPLAY ABILITY "+l.caller.debugInfo());
             await l.func(l.caller,this,l.data);
+            // console.log(">ONPLAY ABILITY "+l.caller.debugInfo());
         }
         for(let s of this.sigils){
             for(let f of s.funcs.onCardPlayed){
-                if(f.type==listen_me) await f.func(this,this,s.data);
+                if(f.type==listen_me){
+                    //console.log("<ONPLAY ABILITY "+this.debugInfo());
+                    await f.func(this,this,s.data);
+                    //console.log(">ONPLAY ABILITY "+this.debugInfo());
+                }
             }
         }
 
@@ -919,6 +951,7 @@ class GameCard{
 
         blockActions--;
         updateBlockActions();
+        // console.log(">PLAYING "+this.debugInfo());
     }
 
     die(){
@@ -930,6 +963,7 @@ class GameCard{
     }
 
     async place(pos,t=game.turn,from_hand=false,delay=0){
+        //console.log("<PLACING "+this.debugInfo());
         this.side=t;
         let old_pos=this.pos;
         this.pos=pos;
@@ -972,11 +1006,17 @@ class GameCard{
 
         for(let s of this.sigils){
             for(let f of s.funcs.onCardMoved){
-                if(f.type==listen_me) await f.func(this,old_pos,this,s.data);
+                if(f.type==listen_me){
+                    //console.log("<ONMOVE ABILITY "+this.debugInfo());
+                    await f.func(this,old_pos,this,s.data);
+                    //console.log(">ONMOVE ABILITY "+this.debugInfo());
+                }
             }
         }
         for(let l of [...game.movementListeners[t]]){
+            //console.log("<ONMOVE ABILITY "+l.caller.debugInfo());
             await l.func(l.caller,old_pos,this,l.data);
+            //console.log(">ONMOVE ABILITY "+l.caller.debugInfo());
         }
 
         if(old_pos==null){
@@ -995,6 +1035,7 @@ class GameCard{
         }
 
         this.inGame=true;
+        //console.log(">PLACING "+this.debugInfo());
     }
 
     async hit(opp){
@@ -1004,7 +1045,9 @@ class GameCard{
             }
         }
         for(let l of [...game.attackListeners[opp.side]]){
+            //console.log("<ONHIT ABILITY "+l.caller.debugInfo());
             await l.func(l.caller,this,opp,l.data);
+            //console.log(">ONHIT ABILITY "+l.caller.debugInfo());
         }
 
         if(game.canBlock){
@@ -1034,7 +1077,9 @@ class GameCard{
             game.canBlock=true;
             for(let s of this.sigils){
                 if(s.funcs.onDealtAttack!=null){
+                    console.log("<ONATTACK ABILITY "+this.debugInfo());
                     await s.funcs.onDealtAttack(this,opp,s.data);
+                    console.log(">ONATTACK ABILITY "+this.debugInfo());
                 }
             }
 
@@ -1209,7 +1254,8 @@ class Game{
     }
 
     itsOver(){
-        if(game.overBool) return;
+        if(this.overBool) return;
+        this.overBool=true;
         unselectCard();
         cancelHammer();
         isSaccing=true;
@@ -1225,15 +1271,16 @@ class Game{
         },250);
 
         setTimeout(function(){
-            this.overBool=true;
             this.overProm();
             for (const t of this.timeouts) {
                 clearTimeout(t);
             }
             clearInterval(scaleIntv);
 
-            menu.style.visibility="visible";
             playScr.style.visibility="hidden";
+            if(act==modeAct2){
+                menu.style.visibility="visible";
+            }
             fader.classList.remove("fade");
             hoveredTT=null;
             tooltip.style.opacity=0;
@@ -1267,7 +1314,9 @@ class Game{
 
     async tiltScales(pow,attacker,target){
         for(let l of [...game.faceListeners[1-attacker.side]]){
+            //console.log("<ONFACE ABILITY "+l.caller.debugInfo());
             pow=await l.func(pow,l.caller,attacker,target,l.data);
+            //console.log(">ONFACE ABILITY "+l.caller.debugInfo());
         }
         this.scales+=pow*(this.turn==0? 1: -1);
         updateScale(pow*(this.turn==this.myTurn? 1: -1));
@@ -1281,10 +1330,15 @@ class Game{
         for(let i=0; i<this.deathQueue.length; i++){
             let card=this.deathQueue[i];
             if(!card.inGame) continue;
+            //console.log("<DEATH "+card.debugInfo());
 
             for(let s of card.sigils){
                 for(let f of s.funcs.onCardDied){
-                    if(f.type==listen_me) await f.func(card,card,s.data);
+                    if(f.type==listen_me){
+                        //console.log("<ONDEATH ABILITY "+card.debugInfo());
+                        await f.func(card,card,s.data);
+                        //console.log(">ONDEATH ABILITY "+card.debugInfo());
+                    }
                 }
             }
             card.inGame=false;
@@ -1308,7 +1362,11 @@ class Game{
                                 continue a;
                             }
                         }
-                        if(ref=="deathListeners" && i==card.side) await l.func(l.caller,card,l.data);
+                        if(ref=="deathListeners" && i==card.side){
+                            //console.log("<ONDEATH ABILITY "+l.caller.debugInfo());
+                            await l.func(l.caller,card,l.data);
+                            //console.log(">ONDEATH ABILITY "+l.caller.debugInfo());
+                        }
                         l2.push(l);
                     }
                     this[ref][i]=l2;
@@ -1319,6 +1377,7 @@ class Game{
                 if(this.board[card.side][card.pos]==card) this.board[card.side][card.pos]=null;
                 this.bones[card.side]++;
             }
+            //console.log(">DEATH "+card.debugInfo());
         }
 
         this.deathQueue=[];
@@ -1342,6 +1401,7 @@ class Game{
         for(let h=0; h<this.dmgQueue.length; h++){
             const card=this.dmgQueue[h].card;
             if(card.health<=0 || !card.inGame) continue;
+            //console.log("<DAMAGE phase 1 "+card.debugInfo());
 
             for(let s of card.sigils){
                 for(let f of s.funcs.onReceivedDmg){
@@ -1355,8 +1415,11 @@ class Game{
                         continue a;
                     }
                 }
+                //console.log("<ONDAMAGE ABILITY "+l.caller.debugInfo());
                 this.dmgQueue[h].dmg=await l.func(this.dmgQueue[h].dmg,l.caller,card,l.data);
+                //console.log(">ONDAMAGE ABILITY "+l.caller.debugInfo());
             }
+            //console.log(">DAMAGE phase 1 "+card.debugInfo());
         }
 
         let q2=[];
@@ -1372,11 +1435,14 @@ class Game{
 
         for(let h=0; h<this.dmgQueue.length; h++){
             const card=this.dmgQueue[h].card;
+            //console.log("<DAMAGE phase 2 "+card.debugInfo());
 
             if(this.dmgQueue[h].src instanceof GameCard){
                 for(let s of this.dmgQueue[h].src.sigils){
                     if(s.funcs.onDealtDmg!=null){
+                        //console.log("<ONDEALT ABILITY "+this.dmgQueue[h].src.debugInfo());
                         this.dmgQueue[h].dmg=await s.funcs.onDealtDmg(this.dmgQueue[h].dmg,this.dmgQueue[h].src,card,s.data);
+                        //console.log(">ONDEALT ABILITY "+this.dmgQueue[h].src.debugInfo());
                     }
                 }
             }
@@ -1403,6 +1469,7 @@ class Game{
                     should_sleep=true;
                 }
             }
+            //console.log(">DAMAGE phase 2 "+card.debugInfo());
         }
         
         this.dmgQueue=[];
@@ -1414,6 +1481,8 @@ class Game{
     async resolve(isTurnEnd=false){
         await this.resolveDamage();
         this.updateControls(isTurnEnd);
+
+        // console.table([this.board[0].map((x)=>x?.card.name),this.board[1].map((x)=>x?.card.name)]);
 
         for(let i=0; i<listenerRefs.length; i++){
             const pools=game[listenerRefs[i]];
@@ -1506,7 +1575,7 @@ class Game{
             }
             else{
                 card=cards[this.deck.pop()];
-                // card=c_sniper;
+                card=c_rat_king;
                 cardsLeft=this.deck.length;
             }
         }
@@ -1692,7 +1761,7 @@ class Game{
                     break;
 
                 default:
-                    throw new Error(msg+"???");
+                    throw new Error("Unknown code("+msg+")");
             }
         }
     }
