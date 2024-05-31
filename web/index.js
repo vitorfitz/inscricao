@@ -1575,7 +1575,7 @@ class Game{
             }
             else{
                 card=cards[this.deck.pop()];
-                card=c_rat_king;
+                // card=c_rat_king;
                 cardsLeft=this.deck.length;
             }
         }
