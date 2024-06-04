@@ -121,15 +121,7 @@ const deckShadows=[
 ];
 const deckShadowLimit=12;
 
-function drawDeckShadow(uiSide,manaOrCard,cards){
-    if(cards==0){
-        deckPiles[uiSide][manaOrCard].parentNode.style.visibility="hidden";
-        return;
-    }
-    
-    deckPiles[uiSide][manaOrCard].parentNode.style.visibility="";
-    const c=deckShadows[uiSide][manaOrCard];
-
+function drawShadow(c,cards){
     const thicc=Math.round(deckShadowLimit*(cards-1)/(minCards-1));
     var ctx = c.getContext('2d');
     ctx.lineWidth = 0;
@@ -145,6 +137,17 @@ function drawDeckShadow(uiSide,manaOrCard,cards){
     ctx.closePath();
     ctx.fill();
     c.parentNode.style.top=c.parentNode.style.left=thicc+"px";
+}
+
+function drawDeckShadow(uiSide,manaOrCard,cards){
+    if(cards==0){
+        deckPiles[uiSide][manaOrCard].parentNode.style.visibility="hidden";
+        return;
+    }
+    
+    deckPiles[uiSide][manaOrCard].parentNode.style.visibility="";
+    const c=deckShadows[uiSide][manaOrCard];
+    drawShadow(c,cards);
 }
 
 const triangleParent=document.querySelector("#triangle");
@@ -281,7 +284,7 @@ function playCard(card,pl,target,nc=null){
 
     if(card.classList.contains("ghostCard")){
         card=card.nextSibling;
-        console.log("saved?",card);
+        // console.log("saved?",card);
         // console.warn(faceDown);
     }
 
@@ -499,7 +502,6 @@ function setScale(val){
 let blockActions=0;
 const bell=document.querySelector("#bell");
 bell.addEventListener("click",async function(){
-    console.log(blockActions);
     if(!blockActions){
         unselectCard();
         sendMsg(codeEndedTurn);
@@ -707,7 +709,7 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
             }
         }
         else{
-            if((blockActions && isSaccing) || game.board[game.myTurn][i]!=null) return;
+            if((blockActions && isSaccing) || blockActions>1 || game.board[game.myTurn][i]!=null) return;
             const played=selectedCard;
             const handIndex=game.hand.indexOf(selectedCard);
 
@@ -905,6 +907,14 @@ actSwitcher.addEventListener("click",function(){
 
 let isPlayClicked=false;
 playBtn.addEventListener("click",async function(){
+    menu.style.visibility="hidden";
+    closeModal(modals[0]);
+    return newRun({myTurn:0},{
+        tippingPoint: parseInt(scaleInput.value),
+        cardsPerTurn: parseInt(cptInput.value),
+        mode: act,
+    });
+
     if(isPlayClicked) return;
     respQueue.clear();
     let chosen;
@@ -956,7 +966,7 @@ playBtn.addEventListener("click",async function(){
         newGame(chosen,json.data,otherJSON,json.data);
     }
     else if(act==modeAct1){
-        newRun(json.data,otherJSON,json.data);
+        newRun(otherJSON,json.data);
     }
 });
 
@@ -1038,7 +1048,7 @@ async function searchGames(){
                     newGame(chosen,json.data,otherJSON,otherJSON);
                 }
                 else if(otherJSON.mode==modeAct1){
-                    newRun(json.data,otherJSON,otherJSON);
+                    newRun(otherJSON,otherJSON);
                 }
             });
 
@@ -1588,15 +1598,15 @@ function matchesSigils(card){
     return true;
 }
 
-let shownCards=[...cards];
+let filteredCards=[...cards];
 function calcFilters(){
     clearInterval(filter_intv);
-    shownCards=[];
+    filteredCards=[];
 
     if(!isCFActive){
         for(let i=0; i<cards.length; i++){
             if(matchesSigils(cards[i])){
-                shownCards.push(cards[i]);
+                filteredCards.push(cards[i]);
             }
         }
     }
@@ -1611,7 +1621,7 @@ function calcFilters(){
                     default:  cond=cards[i].cost>=targetCost;
                 }
                 if(cond && matchesSigils(cards[i])){
-                    shownCards.push(cards[i]);
+                    filteredCards.push(cards[i]);
                 }
             }
         }
@@ -1643,7 +1653,7 @@ function updatePage(curr){
 }
 
 function showCardPages(){
-    shownCards.sort(function(a,b){
+    filteredCards.sort(function(a,b){
         if(b.element!=a.element){
            return a.element-b.element;
         }
@@ -1654,18 +1664,18 @@ function showCardPages(){
     cardsDiv.innerHTML="";
     pages=[];
 
-    for(let i=0; i<shownCards.length; i+=cardsPerPage){
+    for(let i=0; i<filteredCards.length; i+=cardsPerPage){
         const page=document.createElement("div");
         for(let j=0; j<cardsPerPage; j++){
             const cardEl=document.createElement("div");
             cardEl.style.width=cardWidth*cardScale+"px";
             cardEl.style.height=cardHeight*cardScale+"px";
 
-            if(i+j<shownCards.length){
-                cardEl.appendChild(shownCards[i+j].render(cardScale));
+            if(i+j<filteredCards.length){
+                cardEl.appendChild(filteredCards[i+j].render(cardScale));
                 cardEl.addEventListener("click",function(){
                     const deck=decks[beingEdited];
-                    const id=shownCards[i+j].id;
+                    const id=filteredCards[i+j].id;
                     if(beingEdited!=-1 && deck.cards[id]<copyLimit){
                         deck.cards[id]++;
                         deck.size++;
@@ -1691,7 +1701,9 @@ function showCardPages(){
     currPage=-1;
     updatePage(0);
 }
-showCardPages();
+setTimeout(function(){
+    showCardPages();
+},500);
 
 const pageCarets=document.querySelectorAll("#cards_wrapper .caret");
 for(let i=0; i<2; i++){

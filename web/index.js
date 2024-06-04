@@ -78,9 +78,9 @@ function checkCost(element,cost){
 }
 
 function updateBlockActions(){
-    console.log("BA"+blockActions);
+    // console.log("BA"+blockActions);
     if(selectedCard!=null){
-        if(blockActions==0 || !isSaccing) boards[0].classList.add("spacesClickable");
+        if(blockActions==0 || (!isSaccing && blockActions==1)) boards[0].classList.add("spacesClickable");
         else boards[0].classList.remove("spacesClickable");
     }
     if(blockActions==0){
@@ -171,7 +171,7 @@ const act_alignX=calcCenterX(i_act.dims[0]);
 const sig_alignX=calcCenterX(i_sigils.dims[0]);
 const sig_alignX2=calcCenterX(2*i_sigils.dims[0]+1);
 const atk_alignX=2
-const hp_alignX=cardWidth-atk_alignX-i_numbers.dims[0];
+const hp_alignX=cardWidth-atk_alignX-2*i_numbers.dims[0]-1;
 const cost_alignX=cardWidth-i_costs.dims[0];
 
 const act_alignY=31;
@@ -722,18 +722,104 @@ a_enlarge.init([2,1],3,bones,"Enlarge","Gasta 3 ossos: Ganha +1/1.",async functi
     card.updateStat(1,card.health);
 });
 
-function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
+function shuffle(array,k=array.length-1) {
+    const end=array.length-1-k;
+    for (let i = array.length-1; i > end; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [array[i], array[j]] = [array[j], array[i]];
     }
 }
 
+function drawStat(ctx,scale,atkOrHp,stat,baseline=null){
+    let color;
+    if(baseline==null || stat==baseline){
+        color=blackText;
+    }
+    else if(stat<baseline){
+        color=redText;
+    }
+    else{
+        color=greenText;
+    }
+
+    if(stat<0) stat=0;
+    else if(stat>99) stat=99;
+    
+    let alignX=[atk_alignX,hp_alignX][atkOrHp];
+    if(atkOrHp==1 && stat<10){
+        alignX+=i_numbers.dims[0]+1;
+    }
+    let place=Math.max(1,10**Math.floor(Math.log10(stat)));
+    while(place>=1){
+        i_colored_nums[color].draw(ctx,scale,Math.floor(stat/place),0,alignX,stats_alignY);
+        alignX+=i_numbers.dims[0]+1;
+        stat%=place;
+        place/=10;
+    }
+}
+
+function clearStat(ctx,scale,atkOrHp,card,unsac){
+    let alignX=[atk_alignX,hp_alignX][atkOrHp];
+    let [cardX,cardY]=getBG(unsac);
+        
+    let alignY,dimY;
+    if(card.statSigil!=null){
+        alignY=cardHeight-1-i_stats.dims[1];
+        dimY=cardHeight-alignY-1;
+    }
+    else{
+        alignY=stats_alignY;
+        dimY=i_numbers.dims[1];
+    }
+
+    ctx.drawImage(i_cards.img,
+        i_cards.skip[0]*cardX+alignX, i_cards.skip[1]*cardY+alignY,
+        2*i_numbers.dims[0]+1, dimY,
+        alignX*scale, alignY*scale,
+        (2*i_numbers.dims[0]+1)*scale, dimY*scale,
+    );
+}
+
+function sigilElement(sig,type="canvas"){
+    const tooltipEl=document.createElement(type);
+    tooltipEl.className="ttTrigger";
+
+    tooltipEl.addEventListener("mouseenter",function(e){
+        tooltip.style.opacity=1;
+        tooltip.style.visibility="visible";
+        tooltip.innerHTML="";
+        if(sig.name!=null){
+            const h3=document.createElement("h3");
+            h3.textContent=sig.name;
+            tooltip.appendChild(h3);
+        }
+        if(sig.desc!=null){
+            const p=document.createElement("p");
+            p.textContent=sig.desc;
+            tooltip.appendChild(p);
+        }
+        hoveredTT=tooltipEl;
+    });
+
+    tooltipEl.addEventListener("mousemove",function(e){
+        tooltip.style.left=e.pageX+"px";
+        tooltip.style.top=e.pageY+"px";
+    });
+
+    tooltipEl.addEventListener("mouseleave",function(e){
+        tooltip.style.opacity=0;
+        tooltip.style.visibility="hidden";
+        if(hoveredTT==tooltipEl) hoveredTT=null;
+    });
+
+    return tooltipEl;
+}
+
 class GameCard{
     static fromCard(c,unsac=false,attack=c.attack,health=c.health){
-        let mc=null;
+        let mods=null;
         if(c instanceof ModdedCard){
-            mc=c;
+            mods=c;
             c=c.card;
         }
 
@@ -742,10 +828,6 @@ class GameCard{
             sigils.push(new GameSigil(c.sigils[i]));
         }
         let activated=c.activated? new GameActivated(c.activated): null;
-
-        if(mc!=null){
-            if(mc.activated) c=activated=mc.activated;
-        }
 
         const nc=new GameCard({
             card:c,
@@ -756,11 +838,7 @@ class GameCard{
             unsaccable:unsac || c.hasSigil(s_cant_be_sacced),
             sigils: sigils,
             activated: activated
-        });
-
-        if(mc!=null){
-            // add sigils
-        }
+        },mods);
         return nc;
     }
 
@@ -787,7 +865,7 @@ class GameCard{
         ];
     }
 
-    constructor(params){
+    constructor(params,mods=null){
         const c=params.card;
         this.card=c;
         this.attack=params.attack;
@@ -803,11 +881,26 @@ class GameCard{
         this.inGame=false;
         this.clickEvent=null;
 
-        const ret=c.renderAlsoReturnCtx(2,this.unsaccable);
+        if(mods){
+            this.attack+=mods.atkBoost;
+            this.health+=mods.hpBoost;
+            for(let i=0; i<newEls; i++){
+                this.sigils.push(mods.extraSigs[i]);
+            }
+        }
+
+        const ret=c.renderAlsoReturnCtx(2,this.unsaccable,this.attack,this.health);
         this.canvas=ret.div;
         this.ctx=ret.ctx;
         this.sigilEls=ret.sigilEls;
         if(this.unsaccable) this.canvas.classList.add("unsaccable");
+
+        if(mods){
+            let newEls=mods.addDrip(this.canvas);
+            for(let i=0; i<newEls; i++){
+                this.sigilEls.push(newEls[i]);
+            }
+        }
 
         if(this.activated){
             const el=this.sigilEls[0];
@@ -822,13 +915,11 @@ class GameCard{
                 }
             }.bind(this));
         }
-        else{
-            let i=0;
-            for(let j=0; j<c.sigils.length; j++){
-                if(c.sigils[j].coords!=null){
-                    this.sigils[j].el=this.sigilEls[i];
-                    i++;
-                }
+        let i=0;
+        for(let j=0; j<c.sigils.length; j++){
+            if(c.sigils[j].coords!=null){
+                this.sigils[j].el=this.sigilEls[i];
+                i++;
             }
         }
     }
@@ -853,52 +944,9 @@ class GameCard{
     }
 
     updateStat(atkOrHp,stat){
-        const scale=2;
-        let alignX=[atk_alignX,hp_alignX-i_numbers.dims[0]-1][atkOrHp];
-        let [cardX,cardY]=getBG(this.unsaccable);
-        
-        let alignY,dimY;
-        if(this.card.statSigil!=null){
-            alignY=cardHeight-1-i_stats.dims[1];
-            dimY=cardHeight-alignY-1;
-        }
-        else{
-            alignY=stats_alignY;
-            dimY=i_numbers.dims[1];
-        }
-
-        this.ctx.drawImage(i_cards.img,
-            i_cards.skip[0]*cardX+alignX, i_cards.skip[1]*cardY+alignY,
-            2*i_numbers.dims[0]+1, dimY,
-            alignX*scale, alignY*scale,
-            (2*i_numbers.dims[0]+1)*scale, dimY*scale,
-        );
-
-        if(stat<0) stat=0;
-        else if(stat>99) stat=99;
-
+        clearStat(this.ctx,2,atkOrHp,card,this.unsaccable);
         const baseline=[this.baseAttack,this.baseHealth][atkOrHp];
-        let color;
-        if(stat==baseline){
-            color=blackText;
-        }
-        else if(stat<baseline){
-            color=redText;
-        }
-        else{
-            color=greenText;
-        }
-
-        if(atkOrHp==1 && stat<10){
-            alignX+=i_numbers.dims[0]+1;
-        }
-        let place=Math.max(1,10**Math.floor(Math.log10(stat)));
-        while(place>=1){
-            i_colored_nums[color].draw(this.ctx,scale,Math.floor(stat/place),0,alignX==atk_alignX? alignX: alignX,stats_alignY);
-            alignX+=i_numbers.dims[0]+1;
-            stat%=place;
-            place/=10;
-        }
+        drawStat(this.ctx,2,atkOrHp,stat,baseline);
     }
 
     async play(pos,faceDown=null){
@@ -1077,9 +1125,9 @@ class GameCard{
             game.canBlock=true;
             for(let s of this.sigils){
                 if(s.funcs.onDealtAttack!=null){
-                    console.log("<ONATTACK ABILITY "+this.debugInfo());
+                    // console.log("<ONATTACK ABILITY "+this.debugInfo());
                     await s.funcs.onDealtAttack(this,opp,s.data);
-                    console.log(">ONATTACK ABILITY "+this.debugInfo());
+                    // console.log(">ONATTACK ABILITY "+this.debugInfo());
                 }
             }
 
@@ -1261,10 +1309,6 @@ class Game{
         isSaccing=true;
         blockActions++;
         updateBlockActions();
-        nuhuh.style.transitionDuration="100ms";
-        nuhuh.style.opacity="0";
-        respQueue.clear();
-        promQueue.clear();
 
         setTimeout(function(){
             fader.classList.add("fade"); 
@@ -1276,6 +1320,11 @@ class Game{
                 clearTimeout(t);
             }
             clearInterval(scaleIntv);
+
+            nuhuh.style.transitionDuration="100ms";
+            nuhuh.style.opacity="0";
+            respQueue.clear();
+            promQueue.clear();
 
             playScr.style.visibility="hidden";
             if(act==modeAct2){
@@ -1683,9 +1732,11 @@ class Game{
     }
 
     async opponentsTurn(){
+        console.warn("run");
         while(true){
             let msg=await Promise.any([getNextMsg(),game.over]);
             if(game.overBool){
+                console.warn("stop");
                 break;
             }
             switch (msg[0]){
@@ -1748,6 +1799,7 @@ class Game{
 
                 case codeEndedTurn:
                     await this.endTurn();
+                    console.warn("turn");
                     return;
                 
                 case codeDecision:

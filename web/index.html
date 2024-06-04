@@ -129,7 +129,6 @@
             </div>
             <div id="nuhuh" class="nuhuh"></div>
             <div id="nuhuhSniper" class="nuhuh"></div>
-            <div id="fade"></div>
         </div>
         <div id="menu">
             <div>
@@ -241,9 +240,52 @@
                 </div>
             </div>
         </div>
-        <div id="card_choice"></div>
+        <div id="arena">
+            <div id="card_choice">
+                <div id="pickWrapper">
+                    <div id="pick3">
+                        <div id="ccShadow" class="nuhuh"></div>
+                        <div id="reroll">
+                            <img src="icons/circle-arrow.svg" width="40">
+                            <span>x3</span>
+                        </div>
+                        <div class="cardSpace"></div>
+                        <div class="cardSpace"></div>
+                        <div class="cardSpace"></div>
+                    </div>
+                </div>
+                <div id="arena_deck"></div>
+            </div>
+            <div id="map">
+                <div class="backg">
+                    <div id="spreadDeck"></div>
+                    <div class="runStats">
+                        <div class="heart">30</div>
+                        <div class="runDeck">
+                            <div>
+                                <canvas class="shadow" width="104" height="132"></canvas>
+                                <div class="actual"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="mcWrapper"></div>
+                <div class="round">
+                    <div class="runStats">
+                        <div class="runDeck">
+                            <div>
+                                <canvas class="shadow" width="104" height="132"></canvas>
+                                <div class="actual"></div>
+                            </div>
+                        </div>
+                        <div class="heart">30</div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div id="tooltip"></div>
-        
+        <div id="fade" class="fader"></div>
+
         <script defer src="init.js"></script>
         <script defer src="index.js"></script>
         <script defer src="cards.js"></script>

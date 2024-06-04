@@ -225,7 +225,13 @@ class Card{
         allCards.push(this);
     }
 
-    renderAlsoReturnCtx(scale,unsac=this.hasSigil(s_cant_be_sacced)){
+    getHealth(){return this.health;}
+    getAttack(){return this.attack;}
+    getCost(){return this.cost;}
+    getElement(){return this.element;}
+    getVisibleSigils(){return this.visibleSigils;}
+
+    renderAlsoReturnCtx(scale,unsac=this.hasSigil(s_cant_be_sacced),atk=this.attack,hp=this.health){
         const d=document.createElement("div");
         d.style.width=cardWidth*scale+"px";
         d.style.height=cardHeight*scale+"px";
@@ -237,54 +243,24 @@ class Card{
         const ctx=c.getContext("2d");
 
         let sigilEls=[];
-        function sigilElement(sig,type="canvas"){
-            const tooltipEl=document.createElement(type);
-            tooltipEl.className="ttTrigger";
+        function addSigilElement(sig,type="canvas"){
+            const tooltipEl=sigilElement(sig,type);
             d.appendChild(tooltipEl);
             sigilEls.push(tooltipEl);
-
-            tooltipEl.addEventListener("mouseenter",function(e){
-                tooltip.style.opacity=1;
-                tooltip.style.visibility="visible";
-                tooltip.innerHTML="";
-                if(sig.name!=null){
-                    const h3=document.createElement("h3");
-                    h3.textContent=sig.name;
-                    tooltip.appendChild(h3);
-                }
-                if(sig.desc!=null){
-                    const p=document.createElement("p");
-                    p.textContent=sig.desc;
-                    tooltip.appendChild(p);
-                }
-                hoveredTT=tooltipEl;
-            });
-
-            tooltipEl.addEventListener("mousemove",function(e){
-                tooltip.style.left=e.pageX+"px";
-                tooltip.style.top=e.pageY+"px";
-            });
-
-            tooltipEl.addEventListener("mouseleave",function(e){
-                tooltip.style.opacity=0;
-                tooltip.style.visibility="hidden";
-                if(hoveredTT==tooltipEl) hoveredTT=null;
-            });
-
             return tooltipEl;
         }
 
         let [cardX,cardY]=getBG(unsac);
         i_cards.draw(ctx,scale,cardX,cardY,0,0);
         i_portraits.draw(ctx,scale,this.portrait[0],this.portrait[1],1,1);
-        i_numbers.draw(ctx,scale,this.health,0,hp_alignX,stats_alignY);
+        drawStat(ctx,scale,1,hp);
 
         if(this.statSigil!=null){
             let [cx,cy]=this.statSigil.statCoords;
             let ox=atk_alignX-1,oy=cardHeight-1-i_stats.dims[1];
 
             i_stats.draw(ctx,scale,cx,cy,ox,oy);
-            const el=sigilElement(this.statSigil,"div");
+            const el=addSigilElement(this.statSigil,"div");
 
             el.style.width=i_stats.dims[0]*scale+"px";
             el.style.height=i_stats.dims[1]*scale+"px";
@@ -292,7 +268,7 @@ class Card{
             el.style.top=oy*scale+"px";
         }
         else{
-            i_numbers.draw(ctx,scale,this.attack,0,atk_alignX,stats_alignY);
+            drawStat(ctx,scale,0,atk);
         }
 
         if(this.cost!=0){
@@ -300,7 +276,7 @@ class Card{
         }
         
         if(this.activated){
-            const el=sigilElement(this.activated);
+            const el=addSigilElement(this.activated);
             el.width=i_act.dims[0]*scale;
             el.height=i_act.dims[1]*scale;
             el.style.left=act_alignX*scale+"px";
@@ -313,7 +289,7 @@ class Card{
         else{
             let alignX=this.visibleSigils.length==2? sig_alignX2: sig_alignX;
             for(let i=0; i<this.visibleSigils.length; i++){
-                const tooltipEl=sigilElement(this.visibleSigils[i]);
+                const tooltipEl=addSigilElement(this.visibleSigils[i]);
                 tooltipEl.width=i_sigils.dims[0]*scale;
                 tooltipEl.height=i_sigils.dims[1]*scale;
                 tooltipEl.style.left=alignX*scale+"px";
@@ -323,6 +299,17 @@ class Card{
                 alignX+=i_sigils.dims[0]+1;
             }
         }
+
+        const debug=document.createElement("span");
+        debug.style.position="absolute";
+        debug.style.top="15px";
+        debug.style.left="5px";
+        debug.style.fontSize="20px";
+        debug.style.color="#00FF00";
+        debug.style.textShadow="-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000"
+        const p=new PowerEstimate(atk,hp,this.sigils);
+        debug.textContent=""+Math.round(p.calc()*1000)/1000;
+        d.appendChild(debug);
 
         d.appendChild(c);
         return {div: d,ctx,sigilEls};

@@ -59,7 +59,7 @@ let promQueue=new Queue();
 let respQueue=new Queue();
 
 socket.onmessage = function(event) {
-    // console.log("got "+event.data);
+    console.log("got "+event.data);
     switch (event.data){
         case codeResign:
             if(game) game.itsOver();
@@ -88,7 +88,7 @@ async function getNextMsg(){
 }
 
 function sendMsg(msg){
-    // console.log("sent "+msg);
+    console.log("sent "+msg);
     socket.send(msg);
 }
 

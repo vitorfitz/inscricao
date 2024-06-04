@@ -49,12 +49,12 @@ c_salmon.init("Salmon",2,2,2,blood,[s_aquatic,s_sidestep],null,[2,11]);
 c_sarcophagus.init("Sarcophagus",3,0,4,bones,[s_sarc],null,[3,11]);
 c_thicc.init("Thick Droid",4,1,4,energy,[],null,[8,11]);
 c_477.init("Urayuli",4,7,7,blood,[],null,[1,12]);
-c_warren.init("Warren",1,0,3,blood,[s_rabbit],null,[2,12]);
+c_warren.init("Warren",1,0,4,blood,[s_rabbit],null,[2,12]);
 c_wolf.init("Wolf",2,3,2,blood,[],null,[3,12]);
 // wolf cub
 c_zombie.init("Zombie",1,1,2,bones,[],null,[5,12]);
 c_cockroach.init("Cockroach",3,1,1,bones,[s_undying],null,[8,12]);
-c_bat.init("Bat",3,2,2,bones,[s_flying],null,[0,13]);
+c_bat.init("Bat",3,2,1,bones,[s_flying],null,[0,13]);
 c_beaver.init("Beaver",2,1,4,blood,[s_dam],null,[1,13]);
 c_dam.init("Dam",0,0,2,bones,[s_reach,s_cant_be_sacced],null,[2,13],false);
 c_bee.init("Bee",0,1,1,bones,[s_flying],null,[3,13],false);
@@ -79,8 +79,8 @@ c_sparrow.init("Sparrow",1,1,3,blood,[s_flying],null,[4,15]);
 // strange larva
 c_vulture.init("Turkey Vulture",8,3,4,bones,[s_flying],null,[7,15]);
 c_bone_horn.init("Bone Lord's Horn",6,1,1,bones,[],a_bone_horn,[4,1]);
-c_tomb_raider.init("Tomb Robber",1,0,1,bones,[],a_disentomb,[0,12]);
+c_tomb_raider.init("Tomb Robber",1,0,2,bones,[],a_disentomb,[0,12]);
 c_plasma.init("Plasma Jimmy",2,0,2,energy,[],a_energy_gun,[0,4]);
-c_bone_heap.init("Bone Heap",1,0,1,bones,[],a_enlarge,[5,1]);
+c_bone_heap.init("Bone Heap",1,0,2,bones,[],a_enlarge,[5,1]);
 c_hand_tent.init("Hand Tentacle",2,0,4,blood,[s_hand],null,[8,3]);
 c_mirror_tent.init("Mirror Tentacle",1,0,4,blood,[s_mirror],null,[8,4]);

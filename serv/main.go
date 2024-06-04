@@ -193,6 +193,9 @@ func handleMessages() {
 
 						coinflip := rand.Intn(2)
 						// coinflip := 0
+						if j.Data == nil {
+							j.Data = make(map[string]any)
+						}
 						j.Data["myTurn"] = coinflip
 						m1, _ := json.Marshal(j.Data)
 						writeMessage(gameOffer.conn, m1)
