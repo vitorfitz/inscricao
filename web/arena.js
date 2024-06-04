@@ -81,7 +81,7 @@ function newRun(otherJSON,configs){
     run.freshStart();
     updateHPs();
     updateDeck(1);
-    cardPick(7,2,buffedCards);
+    cardPick(2);
 }
 
 const pick3=document.querySelector("#pick3");
@@ -103,22 +103,9 @@ for(let i=0; i<pickSpaces.length; i++){
             let pos=cardPickPos;
             cardPickPos++;
 
-            const origRect=pickSpaces[i].getBoundingClientRect();
-            const targetRect=cardPickEls[pos].getBoundingClientRect();
-            let origX=origRect.left+origRect.width/2;
-            let origY=origRect.top+origRect.height/2;
-            let targetX=targetRect.left+targetRect.width/2;
-            let targetY=targetRect.top+targetRect.height/2;
-            const trans=document.createElement("div");
-            trans.className="transporter";
-            trans.style.left=origX+"px";
-            trans.style.top=origY+"px";
-            trans.appendChild(pickSpaces[i].firstElementChild);
-            cardSelect.appendChild(trans);
-            void trans.offsetWidth;
-            trans.style.left=targetX+"px";
-            trans.style.top=targetY+"px";
-            trans.style.transform="scale(0.5)";
+            const origRect=centerRect(pickSpaces[i].getBoundingClientRect());
+            const targetRect=centerRect(cardPickEls[pos].getBoundingClientRect());
+            const trans=createTransporter(pickSpaces[i].firstElementChild,null,origRect,targetRect,cardSelect,-1,0.5);
             hoveredTT=null;
             tooltip.style.opacity=0;
             tooltip.style.visibility="hidden";
@@ -165,6 +152,7 @@ function stopPicking(){
         fader.classList.remove("fade");
         cardSelect.style.visibility="hidden";
         map.style.visibility="visible";
+        arenaDeck.innerHTML="";
     },1000);
     hoveredTT=null;
     tooltip.style.opacity=0;
@@ -207,8 +195,14 @@ function cardPick(n,rr=0,gen=randomCards){
     cardPickEls=[];
     generate=gen;
     rerolls=rr;
-    updateReroll();
+    cardPickPt2(n);
+}
 
+function cardPickPt2(n){
+    updateReroll();
+    for(let i=0; i<run.deck.length; i++){
+        arenaDeck.appendChild(run.deck[i].render(2));
+    }
     for(let i=0; i<n; i++){
         cardPickEls.push(document.createElement("div"));
         arenaDeck.appendChild(cardPickEls[i]);
@@ -478,9 +472,9 @@ let sigilEstimates={};
         }
     }};
     se[s_dam.id]={boost:(pe)=>{
-        if(has(pe,s_alpha)) pe.additiveExt+=5;
-        else if(has(pe,s_sq_spawner) || has(pe,s_skele_spawner) || has(pe,s_explosive)) pe.additiveExt+=2;
-        else pe.additiveExt+=3.5;
+        if(has(pe,s_alpha)) pe.additiveExt+=4.8;
+        else if(has(pe,s_sq_spawner) || has(pe,s_skele_spawner) || has(pe,s_explosive)) pe.additiveExt+=1.6;
+        else pe.additiveExt+=3.2;
     }};
     se[s_alpha.id]={mod:(pe)=>{
         pe.additive+=0.6;
@@ -600,8 +594,8 @@ function checkAllowed(sigs){
     return true;
 }
 
-const numMono=2;
-const numDual=2;
+const numMono=5;
+const numDual=5;
 function buffedCards(){
     const copy=[...eligibleCards];
     shuffle(copy,pickSpaces.length);
@@ -618,7 +612,7 @@ function buffedCards(){
         }
 
         // console.log(picks[i]);
-        // picks[i]=c_477;
+        // picks[i]=c_adder;
         let basePower=costToPower[elToPosition(picks[i].element)][picks[i].cost];
         let minThresh=(basePower)*1.24;
         let maxThresh=(basePower)*1.36;
@@ -647,7 +641,7 @@ function buffedCards(){
                 const ev=(new PowerEstimate(picks[i].attack,picks[i].health,together)).calc();
                 if(ev>=minThresh && ev<=maxThresh){
                     combos.push(combo); 
-                    if(combo.indexOf(s_brittle)!=-1) for(let i=0; i<9; i++) combos.push(combo);
+                    if(combo.indexOf(s_brittle)!=-1) {for(let i=0; i<19; i++) combos.push(combo)};
                     if(combo.indexOf(s_burrow)!=-1) for(let i=0; i<3; i++) combos.push(combo);
                     if(combo.indexOf(s_tutor)!=-1) for(let i=0; i<9; i++) combos.push(combo);
                     if(combo.indexOf(s_flying)!=-1) for(let i=0; i<3; i++) combos.push(combo);
@@ -971,22 +965,34 @@ const deckViewer=map.querySelector("#spreadDeck");
 let viewerIntv,shownCards=0,toggleShow=true;
 let readyProm,pendingAnims=0;
 
-function createTransporter(card, nc, myRect, targetRect) {
+function centerRect(r){
+    return{
+        left:r.left+r.width/2,
+        top:r.top+r.height/2,
+    }
+}
+
+function createTransporter(card, nc, myRect, targetRect,el,dur=-1,scale=-1,qlass="transporter") {
     const trans = document.createElement("div");
-    trans.className = "transporter";
-    map.appendChild(trans);
+    trans.className = qlass;
+    el.appendChild(trans);
     trans.appendChild(card);
-    void card.offsetHeight;
+    if(dur!=-1) trans.style.transitionDuration=dur+"ms";
+    if(nc) trans.style.transform = "rotateY(180deg)";
+
     trans.style.top = myRect.top + "px";
     trans.style.left = myRect.left + "px";
     void trans.offsetHeight;
-
-    trans.style.transform = "rotateY(180deg)";
     trans.style.top = targetRect.top + "px";
     trans.style.left = targetRect.left + "px";
-    setTimeout(function () {
-        trans.replaceChild(nc, card);
-    }, 100);
+    if(scale!=-1) trans.style.scale=scale;
+    
+    if(nc){
+        trans.style.transform = "rotateY(0deg)";
+        setTimeout(function () {
+            trans.replaceChild(nc, card);
+        }, dur/2);
+    }
 
     return trans;
 }
@@ -1028,7 +1034,7 @@ deckDivs[0].addEventListener("click",async function(){
             const targetRect=placeholder.getBoundingClientRect();
             const myRect=deckDivs[0].firstElementChild.getBoundingClientRect();
 
-            const trans=createTransporter(card,nc,myRect, targetRect);
+            const trans=createTransporter(card,nc,myRect,targetRect,map,200);
         
             setTimeout(function(){
                 deckViewer.replaceChild(nc,placeholder);
@@ -1065,7 +1071,7 @@ deckDivs[0].addEventListener("click",async function(){
             const targetRect=deckDivs[0].firstElementChild.getBoundingClientRect();
             const myRect=card.getBoundingClientRect();
 
-            const trans=createTransporter(card,nc,myRect,targetRect);
+            const trans=createTransporter(card,nc,myRect,targetRect,map,200);
         
             setTimeout(function(){
                 drawShadow(deckShadows2[0], run.deck.length-pickedCards);
@@ -1094,15 +1100,16 @@ class Trial{
     }
 }
 
-const trialBones=new Trial(((c)=>c.getElement()==bones? c.cost: 0),"Trial_bones.webp",4);
+const trialBones=new Trial(((c)=>c.getElement()==bones? c.getCost(): 0),"Trial_bones.webp",4);
 const trialAttack=new Trial(((c)=>c.getAttack()),"Trial_power.webp",5);
 const trialHealth=new Trial(((c)=>c.getHealth()),"Trial_toughness.webp",7);
-const trialBlood=new Trial(((c)=>c.getElement()==blood? c.cost: 0),"Trial_blood.webp",3);
-const trialEnergy=new Trial(((c)=>c.getElement()==energy? c.cost: 0),"trial_energy.png",3);
+const trialBlood=new Trial(((c)=>c.getElement()==blood? c.getCost(): 0),"Trial_blood.webp",3);
+const trialEnergy=new Trial(((c)=>c.getElement()==energy? c.getCost(): 0),"trial_energy.png",3);
 const trialSigils=new Trial(((c)=>c.getVisibleSigils().length),"Trial_abilities.webp",3);
 
 async function showTrials(){
     shuffle(trials,3);
+    
     for(let i=trials.length-3,j=0; i<trials.length; i++,j++){
         const trial=trials[i];
         pickSpaces[j].innerHTML="";
@@ -1112,8 +1119,11 @@ async function showTrials(){
         trialCard.className="trial";
         pickSpaces[j].appendChild(trialCard);
 
+        const wrapper=document.createElement("div");
+        trialCard.appendChild(wrapper);
+
         const img=trial.file.cloneNode();
-        trialCard.appendChild(img);
+        wrapper.appendChild(img);
 
         // const number=document.createElement("canvas");
         // number.width=4*i_numbers.dims[0];
@@ -1121,10 +1131,101 @@ async function showTrials(){
         // i_numbers.draw(number.getContext("2d"),4,trial.amount,0,0,0);
         const number=document.createElement("span");
         number.textContent=trial.amount;
-        trialCard.appendChild(number);
+        wrapper.appendChild(number);
     }
 }
 
-function playTrial(i){
+const mopup=document.querySelector("#mopup");
+async function playTrial(i){
+    let chosenTrans;
+    let chosenRect;
+    for(let j=0; j<pickSpaces.length; j++){
+        const ch=pickSpaces[j].firstElementChild;
+        if(j==i){
+            const myRect=ch.getBoundingClientRect();
+            chosenRect={top:myRect.top-100,left:innerWidth/2-myRect.width/2};
+            chosenTrans=createTransporter(ch,null,myRect,chosenRect,cardSelect,-1,-1,"transporter2");
+        }
+        else{
+            ch.style.opacity=0;
+            setInterval(function(){
+                ch.remove();
+            },300);
+        }
+    }
 
+    const ch=[...arenaDeck.children];
+    const JSMoment=ch[ch.length-1].getBoundingClientRect()
+    const targetRect={width:JSMoment.width,height:JSMoment.height,top:JSMoment.top,left:JSMoment.left};
+    let transes=[];
+    rerollEl.style.display="none";
+    let inds=[];
+
+    for(let i=ch.length-1; i>=0; i--){
+        const myRect=ch[i].getBoundingClientRect();
+        const trans=createTransporter(ch[i],null,myRect,targetRect,mopup,i==ch.length-1? 0: (ch.length*1.5-i)*50);
+        trans.style.zIndex=69+ch.length-i;
+        transes.push(trans);
+        const ghost=document.createElement("div");
+        ghost.textContent=" ";
+        arenaDeck.appendChild(ghost);
+        ghost.style.width=myRect.width+"px";
+        ghost.style.height=myRect.height+"px";
+        targetRect.top-=1;
+        targetRect.left-=1;
+        inds.push(i);
+        if(i!=ch.length-1) await new Promise((resolve)=>setTimeout(resolve,25));
+    }
+
+    await new Promise((resolve)=>setTimeout(resolve,ch.length*75-50));
+    mopup.style.translate="0 200px";
+    await new Promise((resolve)=>setTimeout(resolve,300));
+    transes.forEach((trans)=>trans.remove());
+    const len=Math.min(3,inds.length);
+    shuffle(inds,len);
+    const starterRect={top:innerHeight+200,left:innerWidth/2};
+    let acc=0;
+    const trial=trials[trials.length-3+i];
+    console.log(trial);
+    transes=[];
+
+    for(let i=0,j=inds.length-len; i<len; i++,j++){
+        const cardBack=filled_canvas(2,i_cards,[2,2]);
+        const targetRect={top:cardHeight*6+50+chosenRect.top,left:(cardWidth*4+50)*(i-1)+innerWidth/2};
+        const trans=createTransporter(cardBack,ch[inds[j]],starterRect,targetRect,cardSelect,300,2,"transporter3");
+        transes.push(trans);
+        const contrib=trial.reducer(run.deck[inds[j]]);
+        console.log(contrib);
+        acc+=contrib;
+        await new Promise((resolve)=>setTimeout(resolve,500));
+    }
+
+    const flash=document.createElement("div");
+    flash.className="flash"
+    if(acc>=trial.amount){
+        flash.style.backgroundColor="#308f20";
+    }
+    else{
+        flash.style.backgroundColor="#af2030";
+    }
+    chosenTrans.firstElementChild.firstElementChild.appendChild(flash);
+    trialMode=false;
+
+    if(acc>=trial.amount){
+        await new Promise((resolve)=>setTimeout(resolve,1500));
+        arenaDeck.innerHTML="";
+        cardPickPt2(1);
+    }
+    else{
+        await new Promise((resolve)=>setTimeout(resolve,1000));
+        fader.classList.add("fade");
+        await new Promise((resolve)=>setTimeout(resolve,1000));
+        fader.classList.remove("fade");
+        arenaDeck.innerHTML="";
+        cardSelect.style.visibility="hidden";
+        map.style.visibility="visible";
+    }
+    chosenTrans.remove();
+    transes.forEach((trans)=>trans.remove());
+    mopup.style.translate="";
 }

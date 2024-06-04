@@ -106,13 +106,28 @@
     pointer-events: all;
 }
 
-#card_choice .transporter{
+#card_choice>.transporter{
     position: absolute;
-    transform: scale(1);
     translate:-50% -50%;
-    transition-property: top,left,transform;
-    transition-duration: 250ms;
+    transition-property: top,left,scale;
+    transition-duration: 200ms;
     transition-timing-function: linear,linear,ease-out;
+    z-index: 2;
+}   
+
+#card_choice>.transporter2{
+    position: absolute;
+    transition-property: top,left;
+    transition-duration: 400ms;
+    transition-timing-function: ease-in-out;
+    z-index: 1;
+}
+
+#card_choice>.transporter3{
+    position: absolute;
+    translate:-50% -50%;
+    transition-property: top,left,scale,transform;
+    transition-timing-function: linear,linear,ease-out,linear;
     z-index: 1;
 }
 
@@ -276,20 +291,67 @@
     align-items: center;
     justify-content: center;
     position: relative;
+    height: 248px;
+    width: 186px;
+    transition: opacity 300ms linear;
+}
+.trial>div{
     height: 100%;
+    cursor: pointer;
+    position: relative;
+    top:-24px;
 }
 .trial img{
     height: 100%;
-    cursor: pointer;
 }
 .trial span{
     position: absolute;
     left:50%;
-    top: 52%;
+    top: calc(52%);
     translate: -50% 0;
     font-size: 50px;
     font-weight: bold;
     color: #101013;
     font-family: sans-serif;
     user-select: none;
+}
+
+#mopup{
+    position: absolute;
+    top: 0%;
+    left: 0%;
+    right: 0%;
+    bottom: 0%;
+    transition: translate 300ms ease-in;
+    pointer-events: none;
+    z-index: 2;
+}
+#mopup>.transporter{
+    transition-property: top,left;
+    transition-timing-function: ease-in-out;
+    position: absolute;
+}
+
+.trial>div>.flash{
+    position: absolute;
+    top:0;
+    left:0;
+    right:0;
+    bottom: 0;
+    animation: flash 1500ms linear forwards;
+}
+
+@keyframes flash{
+    0%{
+        opacity: 0;
+    }
+    20%{
+        opacity: 0.5;
+    }
+    40%{
+        opacity: 0.5;
+    }
+    100%{
+        opacity: 0;
+    }
 }

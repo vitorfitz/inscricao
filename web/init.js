@@ -300,16 +300,16 @@ class Card{
             }
         }
 
-        const debug=document.createElement("span");
-        debug.style.position="absolute";
-        debug.style.top="15px";
-        debug.style.left="5px";
-        debug.style.fontSize="20px";
-        debug.style.color="#00FF00";
-        debug.style.textShadow="-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000"
-        const p=new PowerEstimate(atk,hp,this.sigils);
-        debug.textContent=""+Math.round(p.calc()*1000)/1000;
-        d.appendChild(debug);
+        // const debug=document.createElement("span");
+        // debug.style.position="absolute";
+        // debug.style.top="15px";
+        // debug.style.left="5px";
+        // debug.style.fontSize="20px";
+        // debug.style.color="#00FF00";
+        // debug.style.textShadow="-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000"
+        // const p=new PowerEstimate(atk,hp,this.sigils);
+        // debug.textContent=""+Math.round(p.calc()*1000)/1000;
+        // d.appendChild(debug);
 
         d.appendChild(c);
         return {div: d,ctx,sigilEls};
