@@ -81,7 +81,7 @@ function newRun(otherJSON,configs){
     run.freshStart();
     updateHPs();
     updateDeck(1);
-    cardPick(2);
+    cardPick(2,10,buffedCards);
 }
 
 const pick3=document.querySelector("#pick3");
@@ -366,22 +366,26 @@ let sigilEstimates={};
         else pe.offense*=2.2;
     }};
     se[s_death_touch.id]={uselessAt0: true,mod:(pe)=>{
-        if(pe.attack==0) return;
-        if(has(pe,s_bifurcated)) pe.offense*=1+1.5/(pe.attack*(pe.attack+1)/2);
-        else if(has(pe,s_extra_attack)) pe.offense*=1.1;
-        else if(has(pe,s_flying)) pe.offense*=1+0.1/(pe.attack*(pe.attack+1)/2);
-        else pe.offense*=1+2/(pe.attack*(pe.attack+1)/2);
+        if(pe.attack==0) {
+            if(has(pe,s_quills)) pe.additive+=3.75;
+            pe.dt=1; return;
+        };
+        if(has(pe,s_bifurcated)) pe.dt=1+1.5/(pe.attack*(pe.attack+1)/2);
+        else if(has(pe,s_extra_attack)) pe.dt=1.1;
+        else if(has(pe,s_flying)) pe.dt=1+0.1/(pe.attack*(pe.attack+1)/2);
+        else pe.dt=1+2/(pe.attack*(pe.attack+1)/2);
+        pe.offense*=pe.dt;
     }};
     se[s_double_death.id]={mod:(pe)=>{
         pe.additive+=0.7;
         pe.presence+=0.7;
     }};
     se[s_fecundity.id]={ext:(pe)=>{
-        pe.additiveExt+=3+pe.res/4;
+        pe.additiveExt+=5;
     }};
     se[s_undying.id]={ext:(pe)=>{
-        if(has(pe,s_worthy)) pe.additiveExt+=3+pe.res/4;
-        else if(!has(pe,s_fecundity)) pe.additiveExt+=(3+pe.res/4)*(0.8**((has(pe,s_aquatic)? 2: 1)*pe.defense+0.5));
+        if(has(pe,s_worthy)) pe.additiveExt+=5;
+        else if(!has(pe,s_fecundity)) pe.additiveExt+=5*(0.87**((has(pe,s_aquatic)? 2: 1)*pe.defense+1));
         else pe.additiveExt+=0.5;
     }};
     se[s_sq_spawner.id]={mod:(pe)=>{
@@ -420,36 +424,33 @@ let sigilEstimates={};
     se[s_guardian.id]={};
     se[s_free_sac.id]={mod:(pe)=>{
         if(has(pe,s_worthy)){
-            pe.additiveExt+=9.2;
+            pe.additiveExt+=9;
             pe.presence+=3;
         }
         else{
-            pe.additiveExt+=3.5;
+            pe.additiveExt+=3.6;
             pe.presence+=1.2;
         }
     }};
     se[s_quills.id]={boost:(pe)=>{
-        if(!has(pe,s_aquatic)){
+        if(!has(pe,s_aquatic) && !(has(pe,s_brittle) && pe.attack>0)){
             if(has(pe,s_death_touch)){
-                if(has(pe,s_burrow)){
-                    pe.additive+=(pe.defense+1.5)*2;
-                }
-                else{
-                    pe.additive+=(pe.defense+3);
+                if(!has(pe,s_burrow)){
+                    pe.additive+=((1+pe.defense)*(Math.max(1-5*(pe.defense),0)+pe.offense/pe.dt))*0.4;
                 }
             }
             else{
                 if(has(pe,s_burrow)){
-                    pe.additive+=(pe.defense+1/3)*1.5;
+                    pe.additive+=(pe.defense+0.5+1.5**Math.min(10,pe.defense)/15)*0.64;
                 }
                 else{
-                    pe.additive+=(pe.defense+1)/2;
+                    pe.additive+=1.5;
                 }
             }
         }
     }};
     se[s_aquatic.id]={aquatic:(pe)=>{
-        if(!has(pe,s_brittle)){
+        if(!(has(pe,s_brittle) && pe.attack>0)){
             pe.defense=pe.offense+pe.presence+0.1*(pe.hp-1);
             pe.additive+=pe.presence*4;
         }
@@ -461,9 +462,14 @@ let sigilEstimates={};
         pe.additiveExt+=6.5;
     }};
     se[s_burrow.id]={mod:(pe)=>{
-        pe.defense*=0.625;
+        pe.defense*=0.75;
     },boost:(pe)=>{
-        pe.additive+=1*pe.defense**1.25;
+        if(!has(pe,s_aquatic)){
+            let mult=0.9;
+            if(has(pe,s_death_touch) && has(pe,s_quills)) {mult+=1.4; pe.additive-=Math.min(pe.defense,2);}
+            if(has(pe,s_beehive)) mult+=0.8;
+            pe.additive+=mult*(pe.defense+(1.5**Math.min(13,pe.defense*mult))/60);
+        }
     }};
     se[s_sniper.id]={uselessAt0: true,boost:(pe)=>{
         if(pe.offense!=0){
@@ -486,7 +492,9 @@ let sigilEstimates={};
         pe.additive+=1;
     }};
     se[s_beehive.id]={mod:(pe)=>{
-        if(!has(pe,s_aquatic) && !has(pe,s_brittle)) pe.additive+=(pe.defense+0.5)*1.75;
+        if(!has(pe,s_aquatic) && !(has(pe,s_brittle) && pe.attack>0)){
+            pe.additive+=((pe.defense+0.5)**0.55)*2.5;
+        }
     }};
 }
 
@@ -612,7 +620,7 @@ function buffedCards(){
         }
 
         // console.log(picks[i]);
-        // picks[i]=c_adder;
+        // picks[i]=c_477;
         let basePower=costToPower[elToPosition(picks[i].element)][picks[i].cost];
         let minThresh=(basePower)*1.24;
         let maxThresh=(basePower)*1.36;
@@ -711,9 +719,14 @@ const trialNode=new NodeType("Deck Trial","Escolha uma categoria, se seu deck pa
         resolve();
     },1000));
 },()=>1);
-const buildNode=new NodeType("Build-a-Card","Crie uma carta e adicione ao seu deck.","build.webp",function(){
-
-},()=>0.5);
+const buildNode=new NodeType("Build-a-Card","Crie uma carta e adicione ao seu deck.","build.webp",async function(){
+    fader.classList.add("fade");
+    await new Promise((resolve)=>setTimeout(function(){
+        fader.classList.remove("fade");
+        letsBuildACard();
+        resolve();
+    },1000));
+},()=>9999999+0.5);
 const fireNode=new NodeType("Campfire","Aumenta o ataque ou vida de uma carta.","Campfire.webp",function(){
 
 },()=>2);
@@ -1228,4 +1241,54 @@ async function playTrial(i){
     chosenTrans.remove();
     transes.forEach((trans)=>trans.remove());
     mopup.style.translate="";
+}
+
+const buildACard=document.querySelector("#cardFactory");
+const bcHolder=buildACard.querySelector("#cardHolder");
+const bcAttack=bcHolder.querySelector("#attack");
+const bcHealth=bcHolder.querySelector("#health");
+const bcCanvas=bcHolder.querySelector("canvas");
+const bcSigils=buildACard.querySelector("#sigilPick");
+const bcCost=buildACard.querySelector("#cost");
+const costCanvas=bcCost.querySelector("canvas");
+
+{   
+    bcCanvas.width=4*cardWidth;
+    bcCanvas.height=4*cardHeight;
+    const ctx=bcCanvas.getContext("2d");
+    i_cards.draw(ctx,4,1,0,0,0);
+    i_portraits.draw(ctx,4,5,16,1,1);
+}
+
+// if(e==bones && c>10){
+//     this.costXPos=1;
+//     this.costYPos=c-4;
+// }
+// else{
+//     this.costXPos=e;
+//     this.costYPos=c-1;
+// }
+
+{   
+    costCanvas.width=4*i_costs.dims[0];
+    costCanvas.height=4*i_costs.dims[1];
+}
+
+function letsBuildACard(){
+    map.style.visibility="hidden";
+    buildACard.style.visibility="visible";
+
+    shuffle(eligibleSigils,9);
+    for(let i=eligibleSigils.length-9,j=0; i<eligibleSigils.length; i++,j++){
+        if(j==3){
+            j=0;
+            bcSigils.appendChild(document.createElement("br"));
+        }
+        const c=document.createElement("canvas");
+        c.width=2*i_sigils.dims[0];
+        c.height=2*i_sigils.dims[1];
+        const ctx=c.getContext("2d");
+        i_sigils.draw(ctx,2,...eligibleSigils[i].coords,0,0);
+        bcSigils.appendChild(c);
+    }
 }

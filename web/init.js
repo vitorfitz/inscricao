@@ -6,19 +6,19 @@ class Sigil{
         this.coords=coords;
 
         // Listeners
-        this.onCardPlayed=[]; // (me,played,sigilMemory)
-        this.onCardDied=[]; // (me,killed,sigilMemory)
-        this.onReceivedDmg=[]; // (dmg,me,attacked,sigilMemory) returns(dmg)
-        this.onReceivedAttack=[]; // (me,attacker,attacked,sigilMemory)
-        this.onTurnEnded=[]; // (me,sigilMemory)
-        this.onFaceDmg=[]; // (dmg,me,attacker,targetPos,sigilMemory) returns(dmg)
-        this.onCardMoved=[]; // (me,oldPos,mover,sigilMemory)
-        this.onCardDrawn=[]; // (me,card,sigilMemory)
+        this.onCardPlayed=[]; // (me,played,memory)
+        this.onCardDied=[]; // (me,killed,memory)
+        this.onReceivedDmg=[]; // (dmg,me,attacked,memory) returns(dmg)
+        this.onReceivedAttack=[]; // (me,attacker,attacked,memory)
+        this.onTurnEnded=[]; // (me,memory)
+        this.onFaceDmg=[]; // (dmg,me,attacker,targetPos,memory) returns(dmg)
+        this.onCardMoved=[]; // (me,oldPos,mover,memory)
+        this.onCardDrawn=[]; // (me,card,memory)
 
         // Functions
-        this.onDealtDmg=null; // (dmg,me,attacked,sigilMemory)
-        this.onDealtAttack=null; // (me,attacked,sigilMemory)
-        this.modifyTargets=null; // (me,sigilMemory)
+        this.onDealtDmg=null; // (dmg,me,attacked,memory)
+        this.onDealtAttack=null; // (me,attacked,index,memory)
+        this.modifyTargets=null; // (me,memory)
 
         this.initData=initData;
         
@@ -187,7 +187,7 @@ class VanillaActivated extends Activated{
 }
 
 class Card{
-    init(n,c,a,h,e,s,a2,p,collectible=true){
+    init(n,c,a,h,e,s,a2,p,collectible=true,custom=false){
         this.name=n;
         this.attack=a;
         this.health=h;
@@ -221,8 +221,10 @@ class Card{
             this.id=cards.length;
             cards.push(this);
         }
-        this.jsonID=allCards.length;
-        allCards.push(this);
+        if(!custom){
+            this.jsonID=allCards.length;
+            allCards.push(this);
+        }
     }
 
     getHealth(){return this.health;}
@@ -287,17 +289,7 @@ class Card{
             i_act.draw(el.getContext("2d"),scale,this.activated.coords[0],this.activated.coords[1],0,0);
         }
         else{
-            let alignX=this.visibleSigils.length==2? sig_alignX2: sig_alignX;
-            for(let i=0; i<this.visibleSigils.length; i++){
-                const tooltipEl=addSigilElement(this.visibleSigils[i]);
-                tooltipEl.width=i_sigils.dims[0]*scale;
-                tooltipEl.height=i_sigils.dims[1]*scale;
-                tooltipEl.style.left=alignX*scale+"px";
-                tooltipEl.style.top=sig_alignY*scale+"px";
-                
-                i_sigils.draw(tooltipEl.getContext("2d"),scale,this.visibleSigils[i].coords[0],this.visibleSigils[i].coords[1],0,0);
-                alignX+=i_sigils.dims[0]+1;
-            }
+            this.drawSigils(scale,addSigilElement);
         }
 
         // const debug=document.createElement("span");
@@ -317,6 +309,20 @@ class Card{
 
     render(scale){
         return this.renderAlsoReturnCtx(scale).div;
+    }
+
+    drawSigils(scale,sigilFn=sigilElement){
+        let alignX=this.visibleSigils.length==2? sig_alignX2: sig_alignX;
+        for(let i=0; i<this.visibleSigils.length; i++){
+            const tooltipEl=sigilFn(this.visibleSigils[i]);
+            tooltipEl.width=i_sigils.dims[0]*scale;
+            tooltipEl.height=i_sigils.dims[1]*scale;
+            tooltipEl.style.left=alignX*scale+"px";
+            tooltipEl.style.top=sig_alignY*scale+"px";
+                
+            i_sigils.draw(tooltipEl.getContext("2d"),scale,this.visibleSigils[i].coords[0],this.visibleSigils[i].coords[1],0,0);
+            alignX+=i_sigils.dims[0]+1;
+        }
     }
 
     hasSigil(sig){

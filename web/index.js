@@ -242,7 +242,7 @@ s_digger.onTurnEnded.push(new Listener(listen_ally,async function(){
 }))
 
 s_brittle.init([2,0],"Brittle","Morre após atacar.");
-s_brittle.onDealtAttack=function(me){ me.die(); }
+s_brittle.onDealtAttack=function(me,_,i){ if(i==game.targets.length-1) me.die(); }
 
 s_bifurcated.init([6,0],"Bifurcated Strike","Ataca os espaços à direita e esquerda em vez do espaço à frente.");
 s_bifurcated.modifyTargets=function(me){
@@ -1120,13 +1120,14 @@ class GameCard{
                 await s.funcs.modifyTargets(this);
             }
         }
-        for(let t of game.targets){
+        for(let i=0; i<game.targets.length; i++){
+            const t=game.targets[i];
             let opp=game.board[1-game.turn][t];
             game.canBlock=true;
             for(let s of this.sigils){
                 if(s.funcs.onDealtAttack!=null){
                     // console.log("<ONATTACK ABILITY "+this.debugInfo());
-                    await s.funcs.onDealtAttack(this,opp,s.data);
+                    await s.funcs.onDealtAttack(this,opp,i,s.data);
                     // console.log(">ONATTACK ABILITY "+this.debugInfo());
                 }
             }
