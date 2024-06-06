@@ -142,8 +142,8 @@
                 <div style="padding: 0;">
                     <div id="act_sel">
                         <h2 style="font-size: 20px;">
-                            <span>Ato 2</span>
-                            <button><img src="icons/circle-arrow.svg" alt=""></button>
+                            <span>Ato 1</span>
+                            <span class="selectedAct">Ato 2</span>
                             <canvas class="close ret" height="34" width="34" style="width: 26px;"></canvas>
                         </h2>
                     </div>
@@ -269,7 +269,12 @@
                     </div>
                 </div>
             </div>
-            <div id="mcWrapper"></div>
+            <div id="mcWrapper">
+                <div id="wwrraapp">
+                    <span>Esperando...</span>
+                    <div id="wrapwrapwrap"></div>
+                </div>
+            </div>
             <div class="round">
                 <div class="runStats">
                     <div class="runDeck">
@@ -284,17 +289,32 @@
         </div>
         <div id="cardFactory">
             <div id="cfStuff">
-                <div id="cardHolder">
-                    <canvas></canvas>
-                    <input type="number" min="0" max="14" step="1" value="0" id="attack">
-                    <input type="number" min="1" max="25" step="1" value="1" id="health">
-                    <div id="cost">
-                        <canvas></canvas>
+                <div>
+                    <div id="cardHolder">
+                        <div>
+                            <canvas></canvas>
+                            <input type="number" min="0" max="14" step="1" value="0" id="attack">
+                            <input type="number" min="1" max="25" step="1" value="1" id="health" dir="rtl">
+                            <div id="cost">
+                                <canvas></canvas>
+                            </div>
+                        </div>
+                        <div id="controls">
+                            <span id="plus" style="line-height:9px; font-size: 18px; position:relative; z-index:1;"><span>++</span></span>
+                            <span id="minus" style="padding-bottom: 4px; line-height:5px; letter-spacing: 1px;"><span>  --</span></span>
+                            <img id="switch" src="icons/circle-arrow.svg" width="16" style="filter:invert(87%)">
+                        </div>
+                    </div>
+                    <div id="cardConfigs">
+                        <div id="sigilPick"></div>
+                        <div id="opmeter">
+                            <div>
+                                <canvas width="71" height="71"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div id="cardConfigs">
-                    <div id="sigilPick"></div>
-                </div>
+                <button id="create">Criar</button>
             </div>
         </div>
         <div id="tooltip"></div>

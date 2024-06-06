@@ -476,6 +476,7 @@ button{
     position: absolute;
     z-index: inherit;
     cursor: help;
+    user-select: none;
 }
 #game .ttTrigger{
     cursor: help !important;
@@ -731,12 +732,15 @@ button{
 #pregame .close{
     margin-top: -6px;
 }
-#pregame h2 button{
-    margin-left: 17px;
-    border-radius: 50%;
-    padding: 6px;
-    border-radius: 7px;
-    background-color: #5f6f9f;
+
+#pregame h2 span{
+    cursor: pointer;
+}
+#pregame h2 span:not(:last-of-type){
+    margin-right: 35px;
+}
+#pregame h2 span:not(.selectedAct){
+    opacity: 0.33;
 }
 #pregame img{
     transform: rotate(-15deg);
@@ -746,6 +750,7 @@ button{
 #pregame h2{
     display: flex;
     align-items: center;
+    user-select: none;
 }
 #pregame .close{
     margin-left: auto;

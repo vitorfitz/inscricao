@@ -713,9 +713,26 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
             const played=selectedCard;
             const handIndex=game.hand.indexOf(selectedCard);
 
-            let msgVals=[codePlayedCard,i,handIndex,...played.toSocket(),...sacPos];
+            let prefix="";
+            if(played.mods && played.mods.extraSigs){
+                prefix+=codePlayedModded;
+                for(let s of played.mods.extraSigs){
+                    prefix+=" "+s.id;
+                }
+                prefix+="\n";
+            }
+            if(played.card.custom){
+                const c=played.card;
+                prefix+=codePlayedCustom+" "+c.attack+" "+c.health+" "+c.cost+" "+c.element;
+                for(let s of c.sigils){
+                    prefix+=" "+s.id;
+                }
+                prefix+="\n";
+            }
+
+            const msgVals=[codePlayedCard,i,handIndex,...played.toSocket(),...sacPos];            
             sacPos=[];
-            sendMsg(msgVals.join(" "));
+            sendMsg(prefix+msgVals.join(" "));
 
             await selectedCard.play(i);
             if(!isSaccing){
@@ -781,9 +798,10 @@ function playScreen(){
         deckSpaces[i][1].appendChild(r2);
         deckPiles[i][1]=r2;
 
-        drawDeckShadow(i,0,20);
-        drawDeckShadow(i,1,10);
+        drawDeckShadow(i,1,numManas);
     }
+    drawDeckShadow(0,0,game.deck.length);
+    drawDeckShadow(1,0,game.oppCardsLeft);
 
     const ctx=scaleCanvas.getContext("2d");
     ctx.clearRect(0,0,scaleCanvas.width,scaleCanvas.height);
@@ -894,26 +912,30 @@ function validateDeck(){
 const actClasses=["a1","a2"];
 const actText=["Ato 1","Ato 2"];
 let act=1;
-const actSwitcher=pregame.querySelector("h2 button");
-const actTitle=pregame.querySelector("h2 span");
+const actTitles=pregame.querySelectorAll("h2 span");
 const configDiv=pregame.querySelector("#configs");
 
-actSwitcher.addEventListener("click",function(){
-    configDiv.classList.remove(actClasses[act]);
-    act=1-act;
-    configDiv.classList.add(actClasses[act]);
-    actTitle.textContent=actText[act];
-});
+for(let i=0; i<actClasses.length; i++){
+    actTitles[i].addEventListener("click",function(){
+        if(i!=act){
+            actTitles[act].classList.remove("selectedAct");
+            configDiv.classList.remove(actClasses[act]);
+            act=i;
+            actTitles[act].classList.add("selectedAct");
+            configDiv.classList.add(actClasses[act]);
+        }
+    });
+}
 
 let isPlayClicked=false;
 playBtn.addEventListener("click",async function(){
-    menu.style.visibility="hidden";
-    closeModal(modals[0]);
-    return newRun({myTurn:0},{
-        tippingPoint: parseInt(scaleInput.value),
-        cardsPerTurn: parseInt(cptInput.value),
-        mode: act,
-    });
+    // menu.style.visibility="hidden";
+    // closeModal(modals[0]);
+    // return newRun({myTurn:0},{
+    //     tippingPoint: parseInt(scaleInput.value),
+    //     cardsPerTurn: parseInt(cptInput.value),
+    //     mode: act,
+    // });
 
     if(isPlayClicked) return;
     respQueue.clear();
@@ -1160,7 +1182,7 @@ function deckToArray(d){
     let arr=[];
     for(let i=0; i<d.cards.length; i++){
         for(let j=0; j<d.cards[i]; j++){
-            arr.push(i);
+            arr.push(cards[i]);
         }
     }
     return arr;

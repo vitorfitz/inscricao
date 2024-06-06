@@ -5,6 +5,8 @@ const codeQuit = "Q";
 const codeEndedTurn = "E";
 const codeHammered = "H";
 const codePlayedCard = "P";
+const codePlayedModded = "N";
+const codePlayedCustom = "K";
 const codeCreateGame = "C";
 const codeJoinGame = "J";
 const codeResign = "R";
@@ -14,6 +16,7 @@ const codeDeleteOffer = "D";
 const codeListGames = "L";
 const codeDecision = "M";
 const codeBoneBounty = "F";
+const codeStartRound = "U";
 
 const modeAct1=0;
 const modeAct2=1;

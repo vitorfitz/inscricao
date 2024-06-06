@@ -6,12 +6,18 @@ class Run{
         this.lifeTotal=lifeTotal;
         this.lanes=lanes;
         this.myTurn=myTurn;
+
+        this.over=new Promise((resolve)=>{
+            this.overProm=resolve;
+        });
+        this.overBool=false;
     }
 
     async freshStart(){
         this.life=[this.lifeTotal,this.lifeTotal];
         this.deck=[];
         this.items=[[],[]];
+        this.customCards=[];
         arenaDeck.innerHTML="";
         this.oppDeckSize=10;
 
@@ -20,6 +26,8 @@ class Run{
         mapWrapper.appendChild(mCanvas);
     }
 }
+
+const fadeTimer=500;
 
 const tapeImg=new Image();
 tapeImg.src="icons/tape.png";
@@ -82,6 +90,7 @@ function newRun(otherJSON,configs){
     updateHPs();
     updateDeck(1);
     cardPick(2,10,buffedCards);
+    fader.style.animationDuration=fadeTimer+"ms";
 }
 
 const pick3=document.querySelector("#pick3");
@@ -98,6 +107,7 @@ for(let i=0; i<pickSpaces.length; i++){
         }
         else if(presentedCards[i]){
             const card=presentedCards[i];
+            presentedCards[i]=null;
             run.deck.push(card);
             // cardPickEls[cardPickPos].appendChild(presentedCards[i].render(2));
             let pos=cardPickPos;
@@ -153,7 +163,7 @@ function stopPicking(){
         cardSelect.style.visibility="hidden";
         map.style.visibility="visible";
         arenaDeck.innerHTML="";
-    },1000);
+    },fadeTimer);
     hoveredTT=null;
     tooltip.style.opacity=0;
     tooltip.style.visibility="hidden";
@@ -211,7 +221,7 @@ function cardPickPt2(n){
 }
 
 const map=document.querySelector("#map");
-const mapWrapper=map.querySelector("#mcWrapper");
+const mapWrapper=map.querySelector("#wrapwrapwrap");
 
 function genMapModel(len=2, width=3, conns=3){
     let mm=[];
@@ -293,7 +303,6 @@ function genMapModel(len=2, width=3, conns=3){
                 vis[j]=true;
                 visCount++;
 
-                console.log(qtd,conns);
                 if(qtd>=conns){
                     for(let k=0; k<width; k++){
                         if(exited[k]>=2){
@@ -346,9 +355,14 @@ let sigilEstimates={};
     const se=sigilEstimates;
     se[s_bomb.id]={mod:(pe)=>{
         pe.additiveExt+=5.5;
-        if(has(pe,s_flying)) pe.offense*=0.66;
-        else pe.offense*=0.33;
-        pe.defense*=0.33;
+        if(pe.hp<=5){
+            if(has(pe,s_flying)) pe.offense*=0.75;
+            else pe.offense*=0.3;
+            pe.defense*=0.3;
+        }
+        else{
+            pe.defense*=(pe.hp-5)/pe.hp;
+        }
     }};
     se[s_digger.id]={mod:(pe)=>{
         pe.additive+=0.45;
@@ -358,8 +372,11 @@ let sigilEstimates={};
         if(pe.attack>0) pe.defense=0;
     }};
     se[s_bifurcated.id]={uselessAt0: true,mod:(pe)=>{
-        if(has(pe,s_flying)) pe.offense*=1.9;
-        else pe.offense*=1.8;
+        if(has(pe,s_flying)) pe.offense*=1.96;
+        else{
+            pe.offense*=1.8;
+            if(!has(pe,s_aquatic)) pe.additive+=((0.5+pe.defense)*(0.5+pe.offense))*0.08;
+        }
     }};
     se[s_extra_attack.id]={uselessAt0: true,mod:(pe)=>{
         if(has(pe,s_flying)) pe.offense*=2.06;
@@ -370,11 +387,13 @@ let sigilEstimates={};
             if(has(pe,s_quills)) pe.additive+=3.75;
             pe.dt=1; return;
         };
-        if(has(pe,s_bifurcated)) pe.dt=1+1.5/(pe.attack*(pe.attack+1)/2);
+        if(has(pe,s_flying)) pe.dt=1+0.1/(pe.attack*(pe.attack+1)/2);
+        else if(has(pe,s_bifurcated)) pe.dt=1+1.5/(pe.attack*(pe.attack+1)/2);
         else if(has(pe,s_extra_attack)) pe.dt=1.1;
-        else if(has(pe,s_flying)) pe.dt=1+0.1/(pe.attack*(pe.attack+1)/2);
         else pe.dt=1+2/(pe.attack*(pe.attack+1)/2);
         pe.offense*=pe.dt;
+    },boost:(pe)=>{
+        if(has(pe,s_sidestep) || has(pe,s_push) || has(pe,s_sq_spawner) || has(pe,s_skele_spawner) || has(pe,s_burrow) || has(pe,s_guardian)) pe.additive+=Math.max(0,Math.min(2.2,pe.dt-0.333)*pe.defense*0.2);
     }};
     se[s_double_death.id]={mod:(pe)=>{
         pe.additive+=0.7;
@@ -419,7 +438,7 @@ let sigilEstimates={};
         }
     }};
     se[s_sidestep.id]={boost:(pe)=>{
-        if(!has(pe,s_burrow) && !has(pe,s_guardian) && !has(pe,s_sq_spawner) && !has(pe,s_skele_spawner) && !has(pe,s_push)) pe.additive+=pe.defense/8;
+        if(!has(pe,s_burrow) && !has(pe,s_guardian) && !has(pe,s_sq_spawner) && !has(pe,s_skele_spawner) && !has(pe,s_push) && !(has(pe,s_death_touch) && pe.attack>0)) pe.additive+=pe.defense/8;
     }};
     se[s_guardian.id]={};
     se[s_free_sac.id]={mod:(pe)=>{
@@ -444,7 +463,7 @@ let sigilEstimates={};
                     pe.additive+=(pe.defense+0.5+1.5**Math.min(10,pe.defense)/15)*0.64;
                 }
                 else{
-                    pe.additive+=1.5;
+                    pe.additive+=pe.defense*0.5+0.5;
                 }
             }
         }
@@ -452,6 +471,7 @@ let sigilEstimates={};
     se[s_aquatic.id]={aquatic:(pe)=>{
         if(!(has(pe,s_brittle) && pe.attack>0)){
             pe.defense=pe.offense+pe.presence+0.1*(pe.hp-1);
+            if(has(pe,s_stinky)) pe.defense*=1.7;
             pe.additive+=pe.presence*4;
         }
     }};
@@ -483,9 +503,9 @@ let sigilEstimates={};
         else pe.additiveExt+=3.2;
     }};
     se[s_alpha.id]={mod:(pe)=>{
-        pe.additive+=0.6;
-        if(has(pe,s_guardian) || has(pe,s_burrow)) pe.presence+=0.4;
-        else pe.presence+=0.6;
+        pe.additive+=1.5;
+        if(has(pe,s_guardian) || has(pe,s_burrow)) pe.presence+=0.3;
+        else pe.presence+=0.4;
     }};
     se[s_stinky.id]={mod:(pe)=>{
         pe.defense*=1.7;
@@ -574,8 +594,8 @@ class PowerEstimate{
 }
 
 const costToPower=[
-    [3,4.5,6,7.5,9,10.5,12,13.5,15,17,19],
-    [3,6.5,10,14.5,27],
+    [3,4.5,6,7.5,9,10.5,12,13.5,15,17,19,21,23,25],
+    [3,6.5,10,15,25],
     [3,3.5,4,5,6.5,8,9.5]
 ];
 function elToPosition(el){
@@ -699,17 +719,42 @@ class ImgWrapper extends Image{
     }
 }
 
+const waitSpan=document.querySelector("#mcWrapper span");
+
 const cardNode=new NodeType("Card Choice","Adicione 2 cartas ao seu deck.","pick_card.webp",async function(){
     fader.classList.add("fade");
     await new Promise((resolve)=>setTimeout(function(){
         fader.classList.remove("fade");
         cardPick(2,3);
         resolve();
-    },1000));
+    },fadeTimer));
 },()=>999);
-const battleNode=new NodeType("Batalha",null,"battle.webp",function(){
 
+const battleNode=new NodeType("Batalha",null,"battle.webp",function(){
+    (async function(){
+        waitSpan.style.display="inline-flex";
+        sendMsg(codeDecision+" "+run.deck.length);
+        let msg=await Promise.any([getNextMsg(),run.over]);
+        waitSpan.style.display="";
+        if(run.overBool) return;
+        run.oppDeckSize=parseInt(msg.substring(2));
+        
+        fader.classList.add("fade");
+        await new Promise((resolve)=>setTimeout(function(){
+            fader.classList.remove("fade");
+            map.style.visibility="hidden";
+            fader.style.animationDuration="";
+            resolve();
+        },fadeTimer));
+        
+        game=new Game([0,0],run.myTurn,run.tippingPoint,run.cardsPerTurn);
+        game.freshStart(run.deck,run.oppDeckSize);
+        game.initConstants();
+        playScreen();
+        run.myTurn=1-run.myTurn;
+    })();
 },()=>0);
+
 const trialNode=new NodeType("Deck Trial","Escolha uma categoria, se seu deck passar nela você ganha uma carta OP.","trial.webp",async function(){
     fader.classList.add("fade");
     await new Promise((resolve)=>setTimeout(function(){
@@ -717,7 +762,7 @@ const trialNode=new NodeType("Deck Trial","Escolha uma categoria, se seu deck pa
         trialMode=true;
         cardPick(0,3,buffedCards);
         resolve();
-    },1000));
+    },fadeTimer));
 },()=>1);
 const buildNode=new NodeType("Build-a-Card","Crie uma carta e adicione ao seu deck.","build.webp",async function(){
     fader.classList.add("fade");
@@ -725,8 +770,8 @@ const buildNode=new NodeType("Build-a-Card","Crie uma carta e adicione ao seu de
         fader.classList.remove("fade");
         letsBuildACard();
         resolve();
-    },1000));
-},()=>9999999+0.5);
+    },fadeTimer));
+},()=>1);
 const fireNode=new NodeType("Campfire","Aumenta o ataque ou vida de uma carta.","Campfire.webp",function(){
 
 },()=>2);
@@ -745,20 +790,20 @@ class MapNode{
     }
 }
 
-// function binarySearch(arr, val) {
-//     let start = 0;
-//     let end = arr.length - 1;
+function binarySearch(arr, val) {
+    let start = 0;
+    let end = arr.length - 1;
 
-//     while (start <= end) {
-//         let mid = Math.floor((start + end) / 2);
-//         if (val < arr[mid]) {
-//             end = mid - 1;
-//         } else {
-//             start = mid + 1;
-//         }
-//     }
-//     return start;
-// }
+    while (start <= end) {
+        let mid = Math.floor((start + end) / 2);
+        if (val <= arr[mid]) {
+            end = mid - 1;
+        } else {
+            start = mid + 1;
+        }
+    }
+    return start;
+}
 
 const mapPaddingX=50,mapPaddingY=50;
 async function renderMap(xSpacing=150,ySpacing=115,len=2,conns=3){
@@ -1232,7 +1277,7 @@ async function playTrial(i){
     else{
         await new Promise((resolve)=>setTimeout(resolve,1000));
         fader.classList.add("fade");
-        await new Promise((resolve)=>setTimeout(resolve,1000));
+        await new Promise((resolve)=>setTimeout(resolve,fadeTimer));
         fader.classList.remove("fade");
         arenaDeck.innerHTML="";
         cardSelect.style.visibility="hidden";
@@ -1244,7 +1289,7 @@ async function playTrial(i){
 }
 
 const buildACard=document.querySelector("#cardFactory");
-const bcHolder=buildACard.querySelector("#cardHolder");
+const bcHolder=buildACard.querySelector("#cardHolder").firstElementChild;
 const bcAttack=bcHolder.querySelector("#attack");
 const bcHealth=bcHolder.querySelector("#health");
 const bcCanvas=bcHolder.querySelector("canvas");
@@ -1260,28 +1305,318 @@ const costCanvas=bcCost.querySelector("canvas");
     i_portraits.draw(ctx,4,5,16,1,1);
 }
 
-// if(e==bones && c>10){
-//     this.costXPos=1;
-//     this.costYPos=c-4;
-// }
-// else{
-//     this.costXPos=e;
-//     this.costYPos=c-1;
-// }
-
 {   
     costCanvas.width=4*i_costs.dims[0];
     costCanvas.height=4*i_costs.dims[1];
 }
+let chosenCost;
+let chosenEl;
+let oldPower;
+const elements=[bones,blood,energy];
+
+function updateCost(){
+    const ctx=costCanvas.getContext("2d");
+    ctx.clearRect(0,0,costCanvas.width,costCanvas.height);
+    if(chosenCost==0) return;
+
+    let xpos,ypos;
+    if(elements[chosenEl]==bones && chosenCost>10){
+        xpos=1;
+        ypos=chosenCost-4;
+    }
+    else{
+        xpos=elements[chosenEl];
+        ypos=chosenCost-1;
+    }
+    i_costs.draw(ctx,4,xpos,ypos,0,0,0);
+    updateOPmeter();
+}
+
+const plus=buildACard.querySelector("#plus").firstElementChild;
+plus.addEventListener("click",function(){
+    if(chosenCost>=costToPower[chosenEl].length-1) return;
+    chosenCost++;
+    oldPower=costToPower[chosenEl][chosenCost];
+    updateCost();
+});
+const minus=buildACard.querySelector("#minus").firstElementChild;
+minus.addEventListener("click",function(){
+    if(chosenCost<=1) return;
+    chosenCost--;
+    oldPower=costToPower[chosenEl][chosenCost];
+    updateCost();
+});
+const switchBtn=buildACard.querySelector("#switch");
+switchBtn.addEventListener("click",function(){
+    chosenEl++;
+    chosenEl%=3;
+    chosenCost=binarySearch(costToPower[chosenEl],oldPower);
+    if(chosenCost==0){
+        chosenCost=1;
+    }
+    else if(chosenCost==costToPower[chosenEl].length){
+        chosenCost=costToPower[chosenEl].length-1;
+    }
+    updateCost();
+});
+
+let sigilQueue,sigilEls=[],sigilObjs=[];
+function updateSigils(){
+    for(let el of sigilEls){
+        el.remove();
+    }
+    sigilObjs=sigilQueue.map((x)=>x.sigil);
+    sigilEls=drawSigils(sigilObjs,4);
+    for(let el of sigilEls){
+        bcHolder.appendChild(el);
+    }
+    updateOPAI();
+    updateOPmeter();
+}
+
+let bcAtk,bcHP;
+bcAttack.addEventListener("input",function(){
+    const val=parseInt(bcAttack.value);
+    if(val>=0 && val<=14){
+        bcAtk=val;
+        updateOPAI();
+        updateOPmeter();
+    }
+});
+
+bcHealth.addEventListener("input",function(){
+    const val=parseInt(bcHealth.value);
+    if(val>=1 && val<=25){
+        bcHP=val;
+        updateOPAI();
+        updateOPmeter();
+    }
+});
+
+let est;
+function updateOPAI(){
+    est=(new PowerEstimate(bcAtk,bcHP,sigilObjs)).calc();
+}
+
+const baseRotate=120,redRotate=255,maxRotate=300;
+const redRatio=maxRotate/redRotate;
+let shakingIntv=null,canShake=true;
+
+function setRandomInterval(callback, minInterval, maxInterval) {
+    let timeout;
+  
+    function run() {
+      const interval = Math.random() * (maxInterval - minInterval) + minInterval;
+      timeout = setTimeout(() => {
+        callback();
+        run();
+      }, interval);
+    }
+  
+    run();
+  
+    return {
+      clear() {
+        clearTimeout(timeout);
+      }
+    };
+  }
+  
+const mult=1/(redRatio-1);
+const shakeDur=260;
+let failChance;
+
+async function updateOPmeter(){
+    let correctedEst=est;
+    const isSus=sigilObjs.indexOf(s_fecundity)!=-1 || sigilObjs.indexOf(s_undying)!=-1;
+    if(isSus){
+        if(chosenCost==1 && chosenEl==blood){
+            correctedEst+=2; 
+        }
+        else if(chosenCost<=3 && chosenEl==bones){
+            correctedEst+=2; 
+        }
+    }
+
+    const powerPercent=correctedEst/costToPower[chosenEl][chosenCost];
+    let meterPercent=powerPercent;
+    if(meterPercent>1) meterPercent-=(meterPercent-1)/2;
+    let rotation=baseRotate+Math.min(maxRotate,redRotate*meterPercent);
+    pointer.style.transform="rotate("+rotation+"deg)";
+
+    if(shakingIntv) shakingIntv.clear();
+    shakingIntv=null;
+    failChance=Math.min(1,Math.max(0,(meterPercent-1)*mult));
+
+    if(meterPercent>1){
+        const base=1000;
+        const sh=shakeDur-base+base/failChance;
+
+        canShake=false;
+        shake(1+Math.min(9,(meterPercent-1)*5)).then(()=>canShake=true);
+        shakingIntv=setRandomInterval(function(){
+            shake(1,true);
+        },260,sh);
+    }
+}
+
+const cfStuff=document.querySelector("#cfStuff>*");
+const its=4;
+const eachDur=shakeDur/its;
+
+async function shake(amount,isFromInterval=false){
+    let randomAngle=Math.random()*2*Math.PI;
+    const decr=amount/its;
+
+    for(let i=0;; i++){
+        if(isFromInterval && !canShake){
+            return;
+        }
+        cfStuff.style.translate=Math.cos(randomAngle)*amount+"px "+Math.sin(randomAngle)*amount+"px";
+        if(i==its-1){
+            cfStuff.style.translate="0px 0px";
+            return;
+        }
+        else{
+            amount-=decr;
+            randomAngle+=3*Math.PI/4+Math.random()*Math.PI/2;
+            await new Promise((resolve)=>setTimeout(resolve,eachDur));
+        }
+    }
+}
+
+const opCanvas=buildACard.querySelector("#opmeter canvas");
+{
+    const ctx=opCanvas.getContext("2d");
+    // const rimWidth=4;
+    const redlineWidth=6;
+    const dims=(opCanvas.width)/2;
+
+    // ctx.lineWidth=rimWidth;
+    // ctx.strokeStyle="black";
+    // let r=dims-rimWidth/2;
+    // ctx.arc(dims,dims,r-rimWidth/2,Math.PI/3,2*Math.PI/3,true);
+    // ctx.stroke();
+
+    ctx.lineWidth=redlineWidth;
+    ctx.strokeStyle="#af0000";
+    // r-=redlineWidth;
+    const r=dims-redlineWidth/2;
+    ctx.arc(dims,dims,r,Math.PI/12,Math.PI/3,false);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.strokeStyle="#bfbfcf";
+    ctx.arc(dims,dims,r,2*Math.PI/3,Math.PI/12,false);
+    ctx.stroke();
+}
+
+const pointer=document.createElement("canvas");
+opCanvas.parentNode.appendChild(pointer);
+pointer.className="pointer";
+const ptrWidth=4,ptrLen=32,middleRadius=5;
+
+{
+    const ctx=pointer.getContext("2d");
+    pointer.height=2*middleRadius;
+    pointer.width=ptrLen+middleRadius;
+
+    ctx.fillStyle="#2f2f2f";
+    ctx.arc(middleRadius,middleRadius,middleRadius-1,0,2*Math.PI);
+    ctx.fill();
+    ctx.fillRect(middleRadius,middleRadius-ptrWidth/2,ptrLen,ptrWidth);
+
+    pointer.style.translate="-"+middleRadius+"px -"+middleRadius+"px";
+    pointer.style.transformOrigin=middleRadius+"px "+middleRadius+"px";
+}
+
+const bcBtn=buildACard.querySelector("#create");
+bcBtn.addEventListener("click",async function(){
+    bcBtn.style.display="none";
+    let randomAngle=Math.random()*2*Math.PI;
+    let amount=0;
+    const changeItrs=5,totalItrs=20,changeEnd=totalItrs-changeItrs;
+    const max=2+failChance*10;
+    const change=max/changeItrs;
+    if(shakingIntv) shakingIntv.clear();
+    shakingIntv=null;
+    canShake=false;
+    buildACard.classList.add("blockAll");
+
+    const rect=bcHolder.getBoundingClientRect();
+    bcHolder.style.transform="rotateY(90deg)";
+    await new Promise((resolve)=>setTimeout(resolve,150));
+
+    for(let i=0;; i++){
+        if(i==totalItrs-1){
+            cfStuff.style.translate="";
+            await new Promise((resolve)=>setTimeout(resolve,eachDur));
+            break;
+        }
+        else{
+            if(i<changeItrs){
+                amount+=change;
+            }
+            else if(i>=changeEnd){
+                amount-=change;
+            }
+
+            cfStuff.style.translate=Math.cos(randomAngle)*amount+"px "+Math.sin(randomAngle)*amount+"px";
+            randomAngle+=3*Math.PI/4+Math.random()*Math.PI/2;
+            await new Promise((resolve)=>setTimeout(resolve,eachDur));
+        }
+    }
+
+    const newCard=new Card();
+    run.deck.push(newCard);
+    newCard.init("Custom",chosenCost,bcAtk,bcHP,chosenEl,sigilObjs,null,[5,16],false,true);
+    const ncCanvas=newCard.render(4);
+    ncCanvas.style.top=rect.top+rect.height/2+"px";
+    ncCanvas.style.left=rect.left+rect.width/2+"px";
+    ncCanvas.style.transform="rotateY(-90deg)";
+    ncCanvas.classList.add("transporter");
+    buildACard.appendChild(ncCanvas);
+    void ncCanvas.offsetHeight;
+    ncCanvas.style.transform="";
+    await new Promise((resolve)=>setTimeout(resolve,750));
+
+    ncCanvas.style.top=innerHeight+100+rect.height/2+"px";
+    ncCanvas.style.left=innerWidth/2+"px";
+    ncCanvas.style.scale="0.5";
+    await new Promise((resolve)=>setTimeout(resolve,250));
+
+    fader.classList.add("fade");
+    setTimeout(function(){
+        bcHolder.style.transform="";
+        buildACard.classList.remove("blockAll");
+        map.style.visibility="visible";
+        buildACard.style.visibility="hidden";
+        fader.classList.remove("fade");
+        ncCanvas.remove();
+        bcSigils.innerHTML="";
+    },fadeTimer);
+});
 
 function letsBuildACard(){
     map.style.visibility="hidden";
     buildACard.style.visibility="visible";
+    chosenCost=1;
+    chosenEl=blood;
+    oldPower=costToPower[chosenEl][chosenCost];
+    bcAtk=0;
+    bcHP=1;
+    sigilObjs=[];
+    bcAttack.value=bcAtk;
+    bcHealth.value=bcHP;
+    bcBtn.style.display="";
+    canShake=true;
+    updateOPAI();
+    updateCost();
 
-    shuffle(eligibleSigils,9);
-    for(let i=eligibleSigils.length-9,j=0; i<eligibleSigils.length; i++,j++){
-        if(j==3){
-            j=0;
+    sigilQueue=[];
+    shuffle(eligibleSigils,12);
+    for(let i=eligibleSigils.length-12,j=0; i<eligibleSigils.length; i++,j++){
+        if(j>0 && j%4==0){
             bcSigils.appendChild(document.createElement("br"));
         }
         const c=document.createElement("canvas");
@@ -1290,5 +1625,26 @@ function letsBuildACard(){
         const ctx=c.getContext("2d");
         i_sigils.draw(ctx,2,...eligibleSigils[i].coords,0,0);
         bcSigils.appendChild(c);
+
+        c.addEventListener("click",function(){
+            for(let i=0; i<sigilQueue.length; i++){
+                if(sigilQueue[i].el==c){
+                    sigilQueue.splice(i,1);
+                    c.classList.remove("selectedSig");
+                    updateSigils();
+                    return;
+                }
+            }
+
+            if(sigilQueue.length>=2){
+                let deleted=sigilQueue[0];
+                sigilQueue.splice(0,1);
+                deleted.el.classList.remove("selectedSig");
+            }
+
+            sigilQueue.push({el: c,sigil: eligibleSigils[i]});
+            c.classList.add("selectedSig");
+            updateSigils();
+        });
     }
 }

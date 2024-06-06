@@ -11,6 +11,7 @@
     flex-direction: column;
     overflow: hidden;
     font-family: sans-serif;
+    user-select: none;  
 }
 
 #pickWrapper{
@@ -223,9 +224,21 @@
     padding-left: 50px;
     padding-right: 50px;
     background-color: #000000;
-    position: relative;
     z-index: 1;
     user-select: none;
+}
+#wwrraapp{
+    position: relative;
+}
+#mcWrapper span{
+    position: absolute;
+    top:0;
+    left:50%;
+    color: #4f4f4f;
+    translate: -50% -30px;
+    font-family: sans-serif;
+    font-size: 18px;
+    display: none;
 }
 
 .currentNode{
@@ -376,6 +389,10 @@
 }
 
 #cfStuff{
+    position: relative;
+}
+#cfStuff>div{
+    transition: translate 65ms linear;
     display: flex;
     border-radius: 30px;
     border: 10px solid #000000;
@@ -383,35 +400,72 @@
     min-width: 450px;
     box-sizing: border-box;
     padding: 20px;
+    align-items: center;
 }
 
 #cardHolder{
     position: relative;
+    margin-right: 30px;
+    background-color: #4f5f7f;
+}
+#cardHolder>:first-child{
+    position: relative;
+    transition: transform 150ms linear;
 }
 #cardHolder input{
     position: absolute;
-    width: 45px;
+    width: 43px;
     font-size: inherit;
     border: 0;
+    background-color: rgba(255,255,255,0.5);
+    border-top: 1px solid #b2b89b;
+    padding: 0;
+    line-height: 1.15;
 }
-#attack{
+#cardHolder #attack{
     bottom: 4px;
     left: 4px;
+    border-right: 1px solid #b2b89b;
+    padding-left: 4px;
 }
-#health{
+#cardHolder #health{
     bottom: 4px;
     right: 4px;
+    border-left: 1px solid #b2b89b;
+    padding-right: 4px;
 }
 
 #cardConfigs{
-    padding-left: 30px;
+    padding-left: 20px;
     flex-grow: 1;
+    user-select: none;
 }
 #cost{
     position: absolute;
-    right:4px;
+    right:0px;
     top:4px;
-    background-color: rgba(0,0,0,0.5);
+}
+#controls{
+    position: absolute;
+    top:1px;
+    right:0;
+    translate: 100% 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color:#dfdfdf;
+    font-size: 20px;
+    padding-left: 4px;
+    user-select: none;
+}
+#controls>*{
+    border-top:4px solid transparent;
+    border-bottom:4px solid transparent;
+    overflow: hidden;
+}
+#controls>*>*{
+    cursor: pointer;
 }
 
 #sigilPick{
@@ -428,11 +482,65 @@
     display: inline-block;
     border-radius: 5px;
     box-shadow: 1px 1px 4px rgba(0, 0, 0,0.75);
+    cursor: pointer;
 }
 #sigilPick>:hover{
     position: relative;
-    top:-1px;
-    left:-1px;
+    top:-1.5px;
+    left:-1.5px;
     box-shadow: 2px 2px 6px rgba(0, 0, 0,0.75);
+}
+#sigilPick>.selectedSig{
     background-color: #00af9f;
+}
+
+#opmeter{
+    margin-top:25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#opmeter>*{
+    border-radius: 50%;
+    background-color: #7f7f8f;
+    border: 4px solid #000000;
+    position: relative;
+}
+
+.pointer{
+    position: absolute;
+    top:50%;
+    left:50%;
+    transition: transform 250ms ease-in-out;
+    transform: rotate(120deg);
+}
+
+#create{
+    position: absolute;
+    top:100%;
+    left:50%;
+    translate: -50% 20px;
+    background-color: #008f7f;
+    padding: 8px 15px;
+    border-radius: 6px;
+    color:#dfdfdf;
+    font-size: 18px;
+    font-weight: bold;
+    min-width: 50px;
+    box-shadow: 0px 0px 5px 3px black;
+}
+
+#cardFactory.blockAll{
+    pointer-events: none !important;
+}
+
+#cardFactory .transporter{
+    position: absolute !important;
+    transition-property: top,left,scale,transform;
+    transition-duration: 400ms,400ms,400ms,150ms;
+    transition-timing-function: linear,linear,ease-out,linear;
+    translate: -50% -50%;
+    z-index: 1;
+    pointer-events: none;
 }

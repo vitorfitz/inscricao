@@ -196,6 +196,7 @@ class Card{
         this.sigils=s;
         this.activated=a2;
         this.portrait=p;
+        this.custom=custom;
 
         if(e==bones && c>10){
             this.costXPos=1;
@@ -224,6 +225,9 @@ class Card{
         if(!custom){
             this.jsonID=allCards.length;
             allCards.push(this);
+        }
+        else{
+            this.jsonID=-1;
         }
     }
 
@@ -289,7 +293,11 @@ class Card{
             i_act.draw(el.getContext("2d"),scale,this.activated.coords[0],this.activated.coords[1],0,0);
         }
         else{
-            this.drawSigils(scale,addSigilElement);
+            let x=drawSigils(this.visibleSigils,scale);
+            for(let q of x){
+                d.appendChild(q);
+                sigilEls.push(q);
+            }
         }
 
         // const debug=document.createElement("span");
@@ -311,20 +319,6 @@ class Card{
         return this.renderAlsoReturnCtx(scale).div;
     }
 
-    drawSigils(scale,sigilFn=sigilElement){
-        let alignX=this.visibleSigils.length==2? sig_alignX2: sig_alignX;
-        for(let i=0; i<this.visibleSigils.length; i++){
-            const tooltipEl=sigilFn(this.visibleSigils[i]);
-            tooltipEl.width=i_sigils.dims[0]*scale;
-            tooltipEl.height=i_sigils.dims[1]*scale;
-            tooltipEl.style.left=alignX*scale+"px";
-            tooltipEl.style.top=sig_alignY*scale+"px";
-                
-            i_sigils.draw(tooltipEl.getContext("2d"),scale,this.visibleSigils[i].coords[0],this.visibleSigils[i].coords[1],0,0);
-            alignX+=i_sigils.dims[0]+1;
-        }
-    }
-
     hasSigil(sig){
         for(let s of this.sigils){
             if(s==sig){
@@ -337,6 +331,23 @@ class Card{
     toJSON(){
         return this.jsonID;
     }
+}
+
+function drawSigils(visibleSigils,scale){
+    let alignX=visibleSigils.length==2? sig_alignX2: sig_alignX;
+    let els=[];
+    for(let i=0; i<visibleSigils.length; i++){
+        const tooltipEl=sigilElement(visibleSigils[i]);
+        tooltipEl.width=i_sigils.dims[0]*scale;
+        tooltipEl.height=i_sigils.dims[1]*scale;
+        tooltipEl.style.left=alignX*scale+"px";
+        tooltipEl.style.top=sig_alignY*scale+"px";
+            
+        i_sigils.draw(tooltipEl.getContext("2d"),scale,visibleSigils[i].coords[0],visibleSigils[i].coords[1],0,0);
+        alignX+=i_sigils.dims[0]+1;
+        els.push(tooltipEl);
+    }
+    return els;
 }
 
 const s_bomb=new Sigil();

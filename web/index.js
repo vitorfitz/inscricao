@@ -285,17 +285,17 @@ s_double_death.onCardDied.push(new Listener(listen_me,async function(me){
 
 s_fecundity.init([4,1],"Fecundity","Cria uma cópia na sua mão ao ser jogada.");
 s_fecundity.onCardPlayed.push(new Listener(listen_me,async function(me){
-    await game.addCardToHand(me.card,undefined,undefined,true);
+    await game.addCardToHand(me.getCard(),undefined,undefined,true);
 }))
 
 s_undying.init([5,1],"Undying","Volta para sua mão quando morre.");
 s_undying.onCardDied.push(new Listener(listen_me,async function(me){
-    await game.addCardToHand(me.card,me.side);
+    await game.addCardToHand(me.getCard(),me.side);
 }))
 
 s_ouroboros.init([5,1],"Undying++","Volta para sua mão com +1/1 quando morre.");
 s_ouroboros.onCardDied.push(new Listener(listen_me,async function(me){
-    await game.addCardToHand(me.card,me.side,function(newMe){
+    await game.addCardToHand(me.getCard(),me.side,function(newMe){
         newMe.attack=me.baseAttack+1;
         newMe.health=me.baseHealth+1;
         newMe.baseAttack=newMe.attack;
@@ -443,7 +443,7 @@ s_tutor.onCardPlayed.push(new Listener(listen_me, async function(me){
                 if(i%6==0 && i!=0){
                     tutorDiv.appendChild(document.createElement("br"));
                 }
-                const card=cards[game.deck[i]];
+                const card=game.deck[i];
                 const c=card.render(2);
                 tutorDiv.appendChild(c);
 
@@ -816,7 +816,11 @@ function sigilElement(sig,type="canvas"){
 }
 
 class GameCard{
-    static fromCard(c,unsac=false,attack=c.attack,health=c.health){
+    getCard(){
+        return this.mods?? this.card;
+    }
+
+    static fromCard(c,unsac=false,attack=c.getAttack(),health=c.getHealth()){
         let mods=null;
         if(c instanceof ModdedCard){
             mods=c;
@@ -880,12 +884,13 @@ class GameCard{
         this.pos=null;
         this.inGame=false;
         this.clickEvent=null;
+        this.mods=mods;
 
         if(mods){
             this.attack+=mods.atkBoost;
             this.health+=mods.hpBoost;
-            for(let i=0; i<newEls; i++){
-                this.sigils.push(mods.extraSigs[i]);
+            for(let i=0; i<mods.extraSigs.length; i++){
+                this.sigils.push(new GameSigil(mods.extraSigs[i]));
             }
         }
 
@@ -897,7 +902,7 @@ class GameCard{
 
         if(mods){
             let newEls=mods.addDrip(this.canvas);
-            for(let i=0; i<newEls; i++){
+            for(let i=0; i<newEls.length; i++){
                 this.sigilEls.push(newEls[i]);
             }
         }
@@ -944,7 +949,7 @@ class GameCard{
     }
 
     updateStat(atkOrHp,stat){
-        clearStat(this.ctx,2,atkOrHp,card,this.unsaccable);
+        clearStat(this.ctx,2,atkOrHp,this.card,this.unsaccable);
         const baseline=[this.baseAttack,this.baseHealth][atkOrHp];
         drawStat(this.ctx,2,atkOrHp,stat,baseline);
     }
@@ -1204,14 +1209,14 @@ class Game{
         this.drawListeners=[[],[]];
     }
 
-    freshStart(deck,startCards=3,startMana=1){
+    freshStart(deck,oppCardsLeft=minCards,startCards=3,startMana=1){
         this.turn=0;
         this.deck=deck.slice(0);
         shuffle(this.deck);
         this.energy=[0,0];
         this.maxEnergy=[0,0];
         this.manasLeft=[numManas,numManas];
-        this.oppCardsLeft=minCards;
+        this.oppCardsLeft=oppCardsLeft;
         this.bones=[0,0];
         this.scales=0;
         this.startCards=startCards;
@@ -1624,7 +1629,7 @@ class Game{
                 cardsLeft=--this.manasLeft[side];
             }
             else{
-                card=cards[this.deck.pop()];
+                card=this.deck.pop();
                 // card=c_rat_king;
                 cardsLeft=this.deck.length;
             }
@@ -1733,13 +1738,14 @@ class Game{
     }
 
     async opponentsTurn(){
-        console.warn("run");
+        // console.warn("run");
         while(true){
             let msg=await Promise.any([getNextMsg(),game.over]);
             if(game.overBool){
-                console.warn("stop");
+                // console.warn("stop");
                 break;
             }
+            let modMsg=null,customMsg=null;
             switch (msg[0]){
                 case codeActivated:
                     let actPos=parseInt(msg.substring(2));
@@ -1747,6 +1753,16 @@ class Game{
                     await actCard.activate();
                     break;
 
+                case codePlayedModded:
+                    const msgs=msg.substring(2).split("\n",2);
+                    modMsg=msgs[0].split(" ");
+                    msg=msgs[1];
+                case codePlayedCustom:
+                    if(msg[0]==codePlayedCustom){
+                        const msgs=msg.substring(2).split("\n",2);
+                        customMsg=msgs[0].split(" ");
+                        msg=msgs[1];
+                    }
                 case codePlayedCard:
                     const spl=msg.substring(2).split(" ");
                     const minSize=2+GameCard.toSocketLen;
@@ -1781,11 +1797,34 @@ class Game{
                     }
                     drawProm=null;
 
-                    const c=GameCard.fromCard(allCards[id],unsac==1,attack,health);
-                    if(attack!=allCards[id].attack){
+                    let card;
+                    if(customMsg!=null){
+                        let atk=parseInt(customMsg[0]),hp=parseInt(customMsg[1]),cost=parseInt(customMsg[2]),element=parseInt(customMsg[3]);
+                        let sigs=[];
+                        for(let i=4; i<customMsg.length; i++){
+                            const id=parseInt(customMsg[i]);
+                            sigs.push(allSigils[id]);
+                        }
+                        card=new Card();
+                        card.init("Dr. Fire Esq.",cost,atk,hp,element,sigs,null,[5,16],false,true);
+                    }
+                    else{
+                        card=allCards[id];
+                    }
+
+                    if(modMsg!=null){
+                        card=new ModdedCard(card);
+                        for(let i=0; i<modMsg.length; i++){
+                            const id=parseInt(modMsg[i]);
+                            card.extraSigs.push(allSigils[id]);
+                        }
+                    }
+
+                    const c=GameCard.fromCard(card,unsac==1,attack,health);
+                    if(id!=-1 && attack!=allCards[id].attack){
                         c.updateStat(0,attack);
                     }
-                    if(health!=allCards[id].health){
+                    if(id!=-1 && health!=allCards[id].health){
                         c.updateStat(1,health);
                     }
                     await c.play(pos,faceDown);
