@@ -656,7 +656,7 @@ button{
 
 .modalBG>*{
     background-color: #bfbfbf;
-    width: 250px;
+    min-width: 250px;
     padding: 30px 32px;
     box-shadow: 6px 6px 6px rgba(0, 0, 0,0.5);
     position: relative;
@@ -1115,8 +1115,15 @@ h1,h2,h3,p{
     margin: 0 -3px;
 }
 #scale_wr{
-    margin-right: 50px;
     position: relative;
+    margin-right: 15px;
+}
+#scale_and_heart{
+    margin-right: 35px;
+    align-self: stretch;
+    position: relative;
+    display: flex;
+    align-items: center;
 }
 
 #resign{
@@ -1167,6 +1174,10 @@ h1,h2,h3,p{
 
 canvas{
     display: block;
+    user-select: none;
+}
+.caret{
+    user-select: none;
 }
 
 #scale_ptr{
@@ -1493,4 +1504,24 @@ img{
 
 .visibleOnHover:hover{
     opacity: 0.75;
+}
+
+#game .heart{
+    width: 60px;
+    height:50px;
+    font-size: 20px;
+    position: absolute;
+    right: 0;
+    z-index: 1;
+    opacity: 0.8;
+}
+
+#game .heart:first-child{
+    top:0;
+    translate: 0 -50%;
+}
+
+#game .heart:last-child{
+    bottom:0;
+    translate: 0 50%;
 }

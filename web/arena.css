@@ -101,10 +101,12 @@
     width: 100%;
     opacity: 0.95;
     filter: brightness(85%);
+    z-index: 1;
 }
 .tagBearer canvas{
     filter: brightness(0) saturate(100%) invert(17%) sepia(91%) saturate(2060%) hue-rotate(216deg) brightness(102%) contrast(95%);
     pointer-events: all;
+    z-index: 2;
 }
 
 #card_choice>.transporter{
@@ -200,11 +202,8 @@
     user-select: none;
 }
 .heart{
-    width: 90px;
-    height:75px;
     color: white;
     font-family: sans-serif;
-    font-size: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -213,6 +212,12 @@
     background-position: center;
     background-size: contain;
     box-sizing: border-box;
+}
+
+#map .heart{
+    width: 90px;
+    height:75px;
+    font-size: 30px;
     padding-bottom: 3px;
     opacity: 0.8;
 }
@@ -543,4 +548,55 @@
     translate: -50% -50%;
     z-index: 1;
     pointer-events: none;
+}
+
+#splosh{
+    position: absolute;
+    top:50%;
+    left:50%;
+    translate:-50% -50%;
+    transform: rotateY(-90deg);
+    transition: transform 150ms linear;
+    display: none;
+}
+
+#map .modalBG{
+    background-color: rgba(255, 255, 255,0.5);
+    transition-delay: 100ms 0ms;
+    transition-duration: 400ms;
+}
+#map .modalBG>*{
+    background-color: #0a0c0f;
+}
+#map .modalBG .close{
+    filter: invert(100%);
+}
+#itemPick{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#itemPick>:not(:last-child){
+    margin-right:25px;
+}
+#itemModal h2{
+    color: white;
+    font-size: 20px;
+    margin-bottom:35px;
+}
+#itemModal img{
+    user-select: none;
+    cursor: pointer;
+}
+
+#map .items{
+    display: flex;
+    margin-bottom: 50px;
+    align-items: center;
+}
+#map .items>*{
+    height: 75px;
+}
+#map .items>:not(:last-child){
+    margin-right: 15px;
 }

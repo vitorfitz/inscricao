@@ -1,3 +1,5 @@
+"use strict"
+
 const allSigils=[];
 class Sigil{
     init(coords=null,name=null,desc=null,initData=function(card,sigil){}){
@@ -475,6 +477,7 @@ const c_plasma=new Card();
 const c_bone_heap=new Card();
 const c_mirror_tent=new Card();
 const c_hand_tent=new Card();
+const c_rock=new Card();
 
 const a_bone_horn=new VanillaActivated();
 const a_disentomb=new VanillaActivated();

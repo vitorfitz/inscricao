@@ -1,3 +1,5 @@
+"use strict"
+
 let run;
 class Run{
     constructor(myTurn,tippingPoint=5,cardsPerTurn=1,lifeTotal=30,lanes=4){
@@ -6,6 +8,7 @@ class Run{
         this.lifeTotal=lifeTotal;
         this.lanes=lanes;
         this.myTurn=myTurn;
+        this.items=[];
 
         this.over=new Promise((resolve)=>{
             this.overProm=resolve;
@@ -505,7 +508,7 @@ let sigilEstimates={};
     se[s_alpha.id]={mod:(pe)=>{
         pe.additive+=1.5;
         if(has(pe,s_guardian) || has(pe,s_burrow)) pe.presence+=0.3;
-        else pe.presence+=0.4;
+        else pe.presence+=0.6;
     }};
     se[s_stinky.id]={mod:(pe)=>{
         pe.defense*=1.7;
@@ -594,9 +597,9 @@ class PowerEstimate{
 }
 
 const costToPower=[
-    [3,4.5,6,7.5,9,10.5,12,13.5,15,17,19,21,23,25],
+    [3,4.5,6,7.5,9,11,13,15,17,18,21,23,25],
     [3,6.5,10,15,25],
-    [3,3.5,4,5,6.5,8,9.5]
+    [3,3.5,4.5,6,7.5,9,11]
 ];
 function elToPosition(el){
     switch(el){
@@ -771,12 +774,38 @@ const buildNode=new NodeType("Build-a-Card","Crie uma carta e adicione ao seu de
         letsBuildACard();
         resolve();
     },fadeTimer));
-},()=>1);
+},()=>0.5);
 const fireNode=new NodeType("Campfire","Aumenta o ataque ou vida de uma carta.","Campfire.webp",function(){
 
 },()=>2);
-const itemNode=new NodeType("Item","Escolha um de 3 itens.","item.webp",function(){
+const itemNode=new NodeType("Item","Escolha um de 3 itens.","item.webp",async function(){
+    itemModal.style.opacity="1";
+    itemModal.style.visibility="visible";
+    itemModal.style.transitionDelay="";
 
+    let totalLots=0;
+    let lots=[];
+    for(let i=0; i<itemTypes.length; i++){
+        const prob=itemTypes[i].lots();
+        totalLots+=prob;
+        lots.push(prob);
+    }
+    const picked=pickRandom(lots,totalLots,3);
+    itemPres.innerHTML="";
+    let dontBeGreedy=false;
+
+    for(let i=0; i<picked.length; i++){
+        const it=itemTypes[picked[i]];
+        const itemImg=sigilElement(it,"img");
+        itemImg.src=it.file.src;
+        itemPres.appendChild(itemImg);
+        itemImg.addEventListener("click",function(){
+            if(dontBeGreedy) return;
+            addItem(itemTypes[picked[i]]);
+            closeItemModal();
+            dontBeGreedy=true;
+        });
+    }
 },()=>4);
 
 class MapNode{
@@ -803,6 +832,27 @@ function binarySearch(arr, val) {
         }
     }
     return start;
+}
+
+function pickRandom(lots,totalLots,n){
+    let remaining=totalLots;
+    let picked=[];
+    let skipped=new Array(lots.length).fill(false);
+
+    for(let j=0; j<n; j++){
+        const rng=Math.random()*remaining;
+        let curr=0,ind=0;
+        for(; curr<rng; ind++){
+            if(!skipped[ind]) curr+=lots[ind];
+        }
+        ind--;
+        picked.push(ind);
+        remaining-=lots[ind];
+        skipped[ind]=true;
+    }
+
+    shuffle(picked);
+    return picked;
 }
 
 const mapPaddingX=50,mapPaddingY=50;
@@ -885,30 +935,7 @@ async function renderMap(xSpacing=150,ySpacing=115,len=2,conns=3){
         lots.push(prob);
     }
     for(let i=1; i<mapNodes.length-1; i++){
-        let remaining=totalLots;
-        let picked=[];
-        let skipped=new Array(lots.length).fill(false);
-        // let vis=[];
-        // for(let j=0; j<width; j++){
-        //     if(mapNodes[i][j]){
-        //         vis.push(j);
-        //     }
-        // }
-
-        // for(let j=0; j<vis.length; j++){
-        for(let j=0; j<width; j++){
-            const rng=Math.random()*remaining;
-            let curr=0,ind=0;
-            for(; curr<rng; ind++){
-                if(!skipped[ind]) curr+=lots[ind];
-            }
-            ind--;
-            picked.push(ind);
-            remaining-=lots[ind];
-            skipped[ind]=true;
-        }
-
-        shuffle(picked);
+        const picked=pickRandom(lots,totalLots,3);
         // for(let j=0; j<vis.length; j++){
         //     const n=mapNodes[i][vis[j]];
         //     n.type=nodeTypes[picked[j]];
@@ -1002,6 +1029,7 @@ async function renderMap(xSpacing=150,ySpacing=115,len=2,conns=3){
 const heartDivs=map.querySelectorAll(".heart");
 const deckDivs=map.querySelectorAll(".actual");
 const deckShadows2=map.querySelectorAll(".shadow");
+const itemDiv=map.querySelector(".backg .items");
 
 for(let i=0; i<2; i++){
     const r=filled_canvas(2,i_cards,[2,2]);
@@ -1531,12 +1559,14 @@ const ptrWidth=4,ptrLen=32,middleRadius=5;
 }
 
 const bcBtn=buildACard.querySelector("#create");
+const splosh=buildACard.querySelector("#splosh");
+
 bcBtn.addEventListener("click",async function(){
     bcBtn.style.display="none";
     let randomAngle=Math.random()*2*Math.PI;
     let amount=0;
     const changeItrs=5,totalItrs=20,changeEnd=totalItrs-changeItrs;
-    const max=2+failChance*10;
+    const max=2+failChance*18;
     const change=max/changeItrs;
     if(shakingIntv) shakingIntv.clear();
     shakingIntv=null;
@@ -1567,23 +1597,33 @@ bcBtn.addEventListener("click",async function(){
         }
     }
 
-    const newCard=new Card();
-    run.deck.push(newCard);
-    newCard.init("Custom",chosenCost,bcAtk,bcHP,chosenEl,sigilObjs,null,[5,16],false,true);
-    const ncCanvas=newCard.render(4);
-    ncCanvas.style.top=rect.top+rect.height/2+"px";
-    ncCanvas.style.left=rect.left+rect.width/2+"px";
-    ncCanvas.style.transform="rotateY(-90deg)";
-    ncCanvas.classList.add("transporter");
-    buildACard.appendChild(ncCanvas);
-    void ncCanvas.offsetHeight;
-    ncCanvas.style.transform="";
-    await new Promise((resolve)=>setTimeout(resolve,750));
+    const success=Math.random()>failChance;
+    let ncCanvas;
+    if(success){
+        const newCard=new Card();
+        run.deck.push(newCard);
+        newCard.init("Custom",chosenCost,bcAtk,bcHP,chosenEl,sigilObjs,null,[5,16],false,true);
+        ncCanvas=newCard.render(4);
+        ncCanvas.style.top=rect.top+rect.height/2+"px";
+        ncCanvas.style.left=rect.left+rect.width/2+"px";
+        ncCanvas.style.transform="rotateY(-90deg)";
+        ncCanvas.classList.add("transporter");
+        buildACard.appendChild(ncCanvas);
+        void ncCanvas.offsetHeight;
+        ncCanvas.style.transform="";
+        await new Promise((resolve)=>setTimeout(resolve,750));
 
-    ncCanvas.style.top=innerHeight+100+rect.height/2+"px";
-    ncCanvas.style.left=innerWidth/2+"px";
-    ncCanvas.style.scale="0.5";
-    await new Promise((resolve)=>setTimeout(resolve,250));
+        ncCanvas.style.top=innerHeight+100+rect.height/2+"px";
+        ncCanvas.style.left=innerWidth/2+"px";
+        ncCanvas.style.scale="0.5";
+        await new Promise((resolve)=>setTimeout(resolve,250));
+    }
+    else{
+        splosh.style.display="inline-flex";
+        void splosh.offsetHeight;
+        splosh.style.transform="rotateY(0deg)";
+        await new Promise((resolve)=>setTimeout(resolve,750));
+    }
 
     fader.classList.add("fade");
     setTimeout(function(){
@@ -1592,8 +1632,15 @@ bcBtn.addEventListener("click",async function(){
         map.style.visibility="visible";
         buildACard.style.visibility="hidden";
         fader.classList.remove("fade");
-        ncCanvas.remove();
         bcSigils.innerHTML="";
+
+        if(success){
+            ncCanvas.remove();
+        }
+        else{
+            splosh.style.display="";
+            splosh.style.transform="";
+        }
     },fadeTimer);
 });
 

@@ -61,7 +61,7 @@ function checkCost(element,cost){
                 if(c.unsaccable){
                     blood=0;
                 }
-                else if(c.card.hasSigil(s_worthy)){
+                else if(c.hasSigil(s_worthy)){
                     blood=3;
                 }
                 total+=blood;
@@ -474,7 +474,7 @@ s_tutor.onCardPlayed.push(new Listener(listen_me, async function(me){
 
 s_burrow.init([4,6],"Burrower","Quando um espaço vazio seu é atacado, se move para defendê-lo.");
 s_burrow.onFaceDmg.push(new Listener(listen_ally, async function(dmg,me,attacker,target){
-    if(!me.card.hasSigil(s_reach) && attacker.card.hasSigil(s_flying)){
+    if(attacker==null || !me.hasSigil(s_reach) && attacker.hasSigil(s_flying)){
         return dmg;
     }
     if(game.board[me.side][target]==null){
@@ -820,6 +820,13 @@ class GameCard{
         return this.mods?? this.card;
     }
 
+    hasSigil(sig){
+        for(let s of this.sigils){
+            if(s.funcs==sig) return true;
+        }
+        return false;
+    }
+
     static fromCard(c,unsac=false,attack=c.getAttack(),health=c.getHealth()){
         let mods=null;
         if(c instanceof ModdedCard){
@@ -921,8 +928,8 @@ class GameCard{
             }.bind(this));
         }
         let i=0;
-        for(let j=0; j<c.sigils.length; j++){
-            if(c.sigils[j].coords!=null){
+        for(let j=0; j<this.sigils.length; j++){
+            if(this.sigils[j].funcs.coords!=null){
                 this.sigils[j].el=this.sigilEls[i];
                 i++;
             }
@@ -1155,10 +1162,7 @@ class GameCard{
         game.targets=null;
         blockActions--;
         updateBlockActions();
-
-        if(Math.abs(game.scales)>=game.tippingPoint){
-            game.itsOver();
-        }
+        if(!run) game.checkScales();
     }
 
     canPlay(){
@@ -1175,10 +1179,17 @@ class Game{
     constructor(_manas,myTurn,tippingPoint=5,cardsPerTurn=1,lanes=4){
         this.starts=[0,lanes-1];
         this.ends=[lanes,-1];
-        this.tippingPoint=tippingPoint;
         this.manas=_manas;
         this.lanes=lanes;
         this.cardsPerTurn=cardsPerTurn;
+        this.tippingPoint=tippingPoint;
+
+        if(run){
+            this.tips=[Math.min(this.tippingPoint,run.life[0]),Math.min(this.tippingPoint,run.life[1])];
+        }
+        else{
+            this.tips=[this.tippingPoint,this.tippingPoint];
+        }
 
         this.board=[];
         this.buffs=[];
@@ -1207,6 +1218,12 @@ class Game{
         this.faceListeners=[[],[]];
         this.movementListeners=[[],[]];
         this.drawListeners=[[],[]];
+    }
+
+    checkScales(){
+        if(this.scales<=0 && this.scales<=-this.tips[this.myTurn] || this.scales>=0 && this.scales>=this.tips[1-this.myTurn]){
+            this.itsOver();
+        }
     }
 
     freshStart(deck,oppCardsLeft=minCards,startCards=3,startMana=1){
@@ -1315,17 +1332,27 @@ class Game{
         isSaccing=true;
         blockActions++;
         updateBlockActions();
+        if(run){
+            if(this.scales<=0){
+                run.life[game.myTurn]+=this.scales;
+            }
+            else{
+                run.life[1-game.myTurn]-=this.scales;
+            }
+        }
 
         setTimeout(function(){
             fader.classList.add("fade"); 
         },250);
 
-        setTimeout(function(){
+        setTimeout(async function(){
             this.overProm();
             for (const t of this.timeouts) {
                 clearTimeout(t);
             }
             clearInterval(scaleIntv);
+            scalePartial=0;
+            toConsume=0;
 
             nuhuh.style.transitionDuration="100ms";
             nuhuh.style.opacity="0";
@@ -1333,8 +1360,18 @@ class Game{
             promQueue.clear();
 
             playScr.style.visibility="hidden";
-            if(act==modeAct2){
+            if(!run || (run.life[0]<=0 || run.life[1]<=0)){
                 menu.style.visibility="visible";
+                run=null;
+            }
+            else{
+                map.style.visibility="visible";
+                updateHPs();
+                updateDeck(1);
+                mapWrapper.innerHTML="";
+                const mCanvas=await renderMap();
+                mapWrapper.appendChild(mCanvas);
+                fader.style.animationDuration=fadeTimer+"ms";
             }
             fader.classList.remove("fade");
             hoveredTT=null;
@@ -1680,6 +1717,7 @@ class Game{
                 await this.board[this.turn][i]._attack();
             }   
         }
+        if(run) game.checkScales();
 
         for(let l of [...game.turnEndListeners[this.turn]]){
             await l.func(l.caller,l.data);
@@ -1839,7 +1877,7 @@ class Game{
 
                 case codeEndedTurn:
                     await this.endTurn();
-                    console.warn("turn");
+                    // console.warn("turn");
                     return;
                 
                 case codeDecision:
@@ -1850,6 +1888,9 @@ class Game{
                 case codeBoneBounty:
                     game.bones[this.turn]+=400;
                     updateBones(this.turn,this);
+                    break;
+                
+                case codeDeleteOffer:
                     break;
 
                 default:

@@ -14,14 +14,18 @@
             </div>
             <div id="board">
                 <div id="gs_wrapper">
-                    <div id="scale_wr">
-                        <div id="scale_ptr">
-                            <div>
-                                <div id="triangle"></div>
+                    <div id="scale_and_heart">
+                        <div class="heart">30</div>
+                        <div id="scale_wr">
+                            <div id="scale_ptr">
+                                <div>
+                                    <div id="triangle"></div>
+                                </div>
+                                <span>0</span>
                             </div>
-                            <span>0</span>
+                            <canvas id="scales" height="200" width="55"></canvas>
                         </div>
-                        <canvas id="scales" height="200" width="55"></canvas>
+                        <div class="heart">30</div>
                     </div>
                     <div id="game_stuff">
                         <div class="res" style="border-bottom-left-radius: 11px; border-bottom-right-radius: 11px;">
@@ -259,6 +263,11 @@
         <div id="map">
             <div class="backg">
                 <div id="spreadDeck"></div>
+                <div class="items">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
                 <div class="runStats">
                     <div class="heart">30</div>
                     <div class="runDeck">
@@ -286,6 +295,15 @@
                     <div class="heart">30</div>
                 </div>
             </div>
+            <div class="modalBG" id="itemModal">
+                <div>
+                    <h2>
+                        <span>Escolha um item</span>
+                        <canvas class="close ret" height="34" width="34" style="width: 26px;"></canvas>
+                    </h2>
+                    <div id="itemPick"></div>
+                </div>
+            </div>
         </div>
         <div id="cardFactory">
             <div id="cfStuff">
@@ -299,6 +317,7 @@
                                 <canvas></canvas>
                             </div>
                         </div>
+                        <img id="splosh" src="map/splosh.png" width="160">
                         <div id="controls">
                             <span id="plus" style="line-height:9px; font-size: 18px; position:relative; z-index:1;"><span>++</span></span>
                             <span id="minus" style="padding-bottom: 4px; line-height:5px; letter-spacing: 1px;"><span>  --</span></span>
@@ -326,5 +345,6 @@
         <script defer src="deck.js"></script>
         <script defer src="socket.js"></script>
         <script defer src="arena.js"></script>
+        <script defer src="items.js"></script>
     </body>
 </html>

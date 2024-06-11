@@ -3,7 +3,7 @@ import numpy as np
 import math
 from PIL import Image
 
-sus=cv2.imread('test.png')
+sus=cv2.imread('Boulder.webp')
 orig=cv2.cvtColor(sus, cv2.COLOR_BGR2RGB)
 image = cv2.cvtColor(sus, cv2.COLOR_BGR2GRAY)
 thresh=35
@@ -69,4 +69,4 @@ def create_image_from_array(array):
     return img
 
 img = create_image_from_array(newImg)
-img.save('output2.png')
+img.save('output.png')

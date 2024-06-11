@@ -340,6 +340,7 @@ function playCard(card,pl,target,nc=null){
 
 function materialize(card,pl,target){
     const targetEl=cardSpaces[pl][target];
+    targetEl.innerHTML="";
     targetEl.appendChild(card);
     card.style.scale="0";
     card.style.opacity="0";
@@ -604,7 +605,7 @@ function sacAnim(card,side,pos){
 function sacrifice(){
     let catsAmongUs=false;
     for(let i=0; i<sacCards.length; i++){
-        if(!sacCards[i].card.hasSigil(s_free_sac)){
+        if(!sacCards[i].hasSigil(s_free_sac)){
             sacCards[i].die();
         }
         else{
@@ -652,7 +653,7 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
                 return;
             }
 
-            const value=card.card.hasSigil(s_worthy)? 3: 1;
+            const value=card.hasSigil(s_worthy)? 3: 1;
             const ind=sacCards.indexOf(card);
             if(ind!=-1){
                 sacs-=value;
@@ -672,7 +673,7 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
             if(sacs>=selectedCard.card.cost){
                 let canProceed=false;
                 for(let i=0; i<sacCards.length; i++){
-                    if(!sacCards[i].card.hasSigil(s_free_sac)/* || sacCards[i].health==1 */){
+                    if(!sacCards[i].hasSigil(s_free_sac)/* || sacCards[i].health==1 */){
                         canProceed=true;
                         break;
                     }
@@ -692,7 +693,7 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
                         sacPos.push(sacCards[i].pos);
                     }
                     const catsAmongUs=sacrifice();
-                    if(catsAmongUs && selectedCard.card.hasSigil(s_fecundity) && selectedCard.card.cost<=2){
+                    if(catsAmongUs && selectedCard.hasSigil(s_fecundity) && selectedCard.card.cost<=2){
                         BSDetected();
                     }
 
@@ -750,15 +751,21 @@ let scalePartial=0;
 function updateScale(damage){
     if(toConsume==0){
         function f(){
-            if(toConsume==0 || Math.abs(scalePartial)==game.tippingPoint){
+            if(toConsume==0){
                 clearInterval(scaleIntv);
                 return;
             }
             const dir=toConsume>0? 1: -1;
             scalePartial+=dir;
-            setScale(scalePartial);
+            if(scalePartial<=0 && scalePartial<-game.tips[0] || scalePartial>=0 && scalePartial>game.tips[1]){
+                scaleVal.textContent=scalePartial;
+            }
+            else{
+                setScale(scalePartial);
+            }
             toConsume-=dir;
         }
+        clearInterval(scaleIntv);
         scaleIntv=setInterval(f,300);
         toConsume=damage;
         f();
@@ -783,6 +790,8 @@ function newGame(chosen,myJSON,theirJSON,creator){
     playScreen();
 }
 
+const hearts=playScr.querySelectorAll(".heart");
+
 let finishedDrawing=null;
 function playScreen(){
     playScr.style.visibility="visible";
@@ -803,6 +812,18 @@ function playScreen(){
     drawDeckShadow(0,0,game.deck.length);
     drawDeckShadow(1,0,game.oppCardsLeft);
 
+    if(run){
+        for(let i=0; i<2; i++){
+            hearts[i].style.display="";
+            hearts[i].textContent=run.life[1-i];
+        }
+    }
+    else{
+        for(let i=0; i<2; i++){
+            hearts[i].style.display="none";
+        }
+    }
+
     const ctx=scaleCanvas.getContext("2d");
     ctx.clearRect(0,0,scaleCanvas.width,scaleCanvas.height);
     ctx.lineWidth=2;
@@ -813,13 +834,14 @@ function playScreen(){
     const smallWidth=10;
     const midOffset=scaleCanvas.width-extWidth/2;
     
-    ctx.moveTo(midOffset,0);
-    ctx.lineTo(midOffset,scaleCanvas.height);
+    ctx.clearRect(0,0,scaleCanvas.offsetWidth,scaleCanvas.offsetHeight);
+    ctx.moveTo(midOffset,(game.tippingPoint-game.tips[1])*step);
+    ctx.lineTo(midOffset,(game.tippingPoint+game.tips[0])*step);
     ctx.stroke();
 
-    for(let i=0; i<=2*game.tippingPoint; i++){
+    for(let i=game.tippingPoint-game.tips[1]; i<=game.tippingPoint+game.tips[0]; i++){
         let tam;
-        if(i==0 || i==2*game.tippingPoint){
+        if(i==game.tippingPoint-game.tips[1] || i==game.tippingPoint+game.tips[0]){
             tam=extWidth;
         }
         else if(i==game.tippingPoint){
@@ -915,6 +937,13 @@ let act=1;
 const actTitles=pregame.querySelectorAll("h2 span");
 const configDiv=pregame.querySelector("#configs");
 
+function whenChanged(){
+    if(isPlayClicked){
+        sendMsg(codeDeleteOffer);
+        playBtn.classList.remove("waiting");
+    }
+}
+
 for(let i=0; i<actClasses.length; i++){
     actTitles[i].addEventListener("click",function(){
         if(i!=act){
@@ -923,7 +952,15 @@ for(let i=0; i<actClasses.length; i++){
             act=i;
             actTitles[act].classList.add("selectedAct");
             configDiv.classList.add(actClasses[act]);
+            whenChanged();
         }
+    });
+}
+
+const allInputs=pregame.querySelectorAll("input,select");
+for(let i of allInputs){
+    i.addEventListener("input",function(){
+        whenChanged();
     });
 }
 
