@@ -9,13 +9,21 @@
         <div id="game">
             <div class="cards_wrapper">
                 <div class="cards_wrapper_wrapper">
-                    <div id="oppCards" class="hand"></div>
+                    <div class="act1stuff">
+                        <div class="heart">30</div>
+                        <div class="items question" id="oppItems">
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                        </div>
+                    </div>
+                    <div id="oppCards" class="hand" style="--margin:5px;"></div>
                 </div>
             </div>
             <div id="board">
                 <div id="gs_wrapper">
                     <div id="scale_and_heart">
-                        <div class="heart">30</div>
+                        <!-- <div class="heart">30</div> -->
                         <div id="scale_wr">
                             <div id="scale_ptr">
                                 <div>
@@ -25,7 +33,7 @@
                             </div>
                             <canvas id="scales" height="200" width="55"></canvas>
                         </div>
-                        <div class="heart">30</div>
+                        <!-- <div class="heart">30</div> -->
                     </div>
                     <div id="game_stuff">
                         <div class="res" style="border-bottom-left-radius: 11px; border-bottom-right-radius: 11px;">
@@ -116,7 +124,15 @@
             </div>
             <div class="cards_wrapper">
                 <div class="cards_wrapper_wrapper">
-                    <div id="myCards" class="hand"></div>
+                    <div class="act1stuff">
+                        <div class="heart">30</div>
+                        <div class="items" id="myItems">
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                        </div>
+                    </div>
+                    <div id="myCards" class="hand" style="--margin:5px;"></div>
                 </div>
             </div>
             <div id="tutorWrapper">
@@ -133,6 +149,7 @@
             </div>
             <div id="nuhuh" class="nuhuh"></div>
             <div id="nuhuhSniper" class="nuhuh"></div>
+            <div id="fullShadow" class="nuhuh"></div>
         </div>
         <div id="menu">
             <div>
@@ -294,6 +311,11 @@
                     </div>
                     <div class="heart">30</div>
                 </div>
+                <div class="items question">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
             </div>
             <div class="modalBG" id="itemModal">
                 <div>
@@ -339,11 +361,11 @@
         <div id="tooltip"></div>
         <div id="fade" class="fader"></div>
 
+        <script defer src="socket.js"></script>
         <script defer src="init.js"></script>
         <script defer src="index.js"></script>
         <script defer src="cards.js"></script>
         <script defer src="deck.js"></script>
-        <script defer src="socket.js"></script>
         <script defer src="arena.js"></script>
         <script defer src="items.js"></script>
     </body>

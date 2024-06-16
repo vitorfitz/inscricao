@@ -87,11 +87,13 @@ function updateBlockActions(){
         hands[0].classList.add("cardsClickable");
         bell.classList.add("selectable");
         hammer.classList.add("selectable");
+        gameItemDivs[0].parentNode.classList.add("selectable");
     }
     else{
         hands[0].classList.remove("cardsClickable");
         bell.classList.remove("selectable");
         hammer.classList.remove("selectable");
+        gameItemDivs[0].parentNode.classList.remove("selectable");
     }
 }
 
@@ -1330,8 +1332,13 @@ class Game{
         unselectCard();
         cancelHammer();
         isSaccing=true;
+        clickProm=null;
+        clickPromArmor=false;
         blockActions++;
         updateBlockActions();
+        nuhuhSniper.style.transitionDuration="100ms";
+        nuhuhSniper.style.opacity="0";
+        
         if(run){
             if(this.scales<=0){
                 run.life[game.myTurn]+=this.scales;
@@ -1365,9 +1372,20 @@ class Game{
                 run=null;
             }
             else{
+                run.revealedItems=[];
+                const oldItems=run.items;
+                run.items=[];
+                for(let i=0; i<oldItems.length; i++){
+                    if(run.usedItems.indexOf(i)==-1){
+                        run.items.push(oldItems[i]);
+                    }
+                }
+                run.usedItems=[];
+
                 map.style.visibility="visible";
                 updateHPs();
                 updateDeck(1);
+                updateItemDivs();
                 mapWrapper.innerHTML="";
                 const mCanvas=await renderMap();
                 mapWrapper.appendChild(mCanvas);
@@ -1405,10 +1423,12 @@ class Game{
     }
 
     async tiltScales(pow,attacker,target){
-        for(let l of [...game.faceListeners[1-attacker.side]]){
-            //console.log("<ONFACE ABILITY "+l.caller.debugInfo());
-            pow=await l.func(pow,l.caller,attacker,target,l.data);
-            //console.log(">ONFACE ABILITY "+l.caller.debugInfo());
+        if(attacker){
+            for(let l of [...game.faceListeners[1-attacker.side]]){
+                //console.log("<ONFACE ABILITY "+l.caller.debugInfo());
+                pow=await l.func(pow,l.caller,attacker,target,l.data);
+                //console.log(">ONFACE ABILITY "+l.caller.debugInfo());
+            }
         }
         this.scales+=pow*(this.turn==0? 1: -1);
         updateScale(pow*(this.turn==this.myTurn? 1: -1));
@@ -1648,12 +1668,14 @@ class Game{
                 }
             };
             c.canvas.addEventListener("click",c.clickEvent);
+            if(justPlayed==null) return c;
         }
         else{
             this.oppCards++;
+            if(justPlayed==null) return c;
             canvas=copyCanvas(deckPiles[1][0]);
         }
-
+        
         cardDrawStage2(canvas,+(side!=this.myTurn),justPlayed);
         return c;
     }
@@ -1889,6 +1911,61 @@ class Game{
                     game.bones[this.turn]+=400;
                     updateBones(this.turn,this);
                     break;
+
+                case codeItem:
+                    let ss=msg.substring(2);
+                    let itemID=parseInt(ss);
+                    let startPos=ss.indexOf(" ");
+
+                    const it=itemTypes[itemID];
+                    let ind=run.revealedItems.indexOf(itemID);
+                    if(ind==-1){
+                        ind=run.revealedItems.length;
+                        const el=sigilElement(it,"img");
+                        el.src=it.file.src;
+                        theirItems[ind].appendChild(el);
+                        run.revealedItems.push(null);
+                    }
+                    else{
+                        run.revealedItems[ind]=null;
+                    }
+                    await it.theirFunc(ind,startPos==-1? null: ss.substring(startPos+1).split(" ").map(x=>parseInt(x)));
+                    break;
+                
+                case codeShowMe:
+                    let msg2=codeDecision+" ";
+                    for(let i=0,first=true; i<run.items.length; i++){
+                        if(run.usedItems.indexOf(i)==-1){
+                            if(first){
+                                first=false;
+                            }
+                            else{
+                                msg2+=" ";
+                            }
+                            msg2+=run.items[i].id;
+                        }
+                    }
+
+                    for(let i=0; i<this.hand.length; i++){
+                        const card=this.hand[i];
+                        msg2+="\n"+card.attack+" "+card.health+" "+card.card.jsonID+" "+(+card.unsaccable);
+                        if(card.card.jsonID==-1){
+                            msg2+=" "+card.card.cost+" "+card.card.element;
+                            for(let i=0; i<card.card.sigils.length; i++){
+                                const s=card.card.sigils[i];
+                                msg2+=" "+s.id;
+                            }
+                        }
+                        if(card.mods){
+                            msg2+="/";
+                            for(let i=0; i<card.mods.extraSigs.length; i++){
+                                const s=card.mods.extraSigs[i];
+                                if(i>0) msg2+=" ";
+                                msg2+=s.id;
+                            }
+                        }
+                    }
+                    sendMsg(msg2);
                 
                 case codeDeleteOffer:
                     break;

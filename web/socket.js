@@ -17,6 +17,8 @@ const codeListGames = "L";
 const codeDecision = "M";
 const codeBoneBounty = "F";
 const codeStartRound = "U";
+const codeItem = "I";
+const codeShowMe = "S";
 
 const modeAct1=0;
 const modeAct2=1;
@@ -60,6 +62,7 @@ let port = location.port ? location.port : (protocol == 'wss:' ? 443 : 80);
 let socket=new WebSocket(`${protocol}//${host}:${port}/ws`);
 let promQueue=new Queue();
 let respQueue=new Queue();
+let canStart=false;
 
 socket.onmessage = function(event) {
     console.log("got "+event.data);

@@ -105,7 +105,9 @@ class BuffSigil extends Sigil{
             if(old_pos!=null){
                 buff(-1,me,old_pos,memory);
             }
-            buff(1,me,me.pos,memory);
+            if(me.pos!=null){
+                buff(1,me,me.pos,memory);
+            }
         }));
         this.onCardDied.push(new Listener(listen_me,async function(me,_,memory){
             if(!me.inGame){
@@ -270,6 +272,7 @@ class Card{
             i_stats.draw(ctx,scale,cx,cy,ox,oy);
             const el=addSigilElement(this.statSigil,"div");
 
+            el.classList.add("bleach_survivor");
             el.style.width=i_stats.dims[0]*scale+"px";
             el.style.height=i_stats.dims[1]*scale+"px";
             el.style.left=ox*scale+"px";

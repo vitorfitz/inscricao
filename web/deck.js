@@ -68,7 +68,6 @@ menuOpts[0].addEventListener("click",function(){
     updateDeckSelect(0);
 });
 
-let canStart=false;
 menuOpts[1].addEventListener("click",async function(){
     joinGame.style.visibility="visible";
     joinGame.style.opacity="1";
@@ -187,10 +186,27 @@ function cardDrawStage1(pl,div){
     },600);
 }
 
-const margin=parseInt(getComputedStyle(playScr).getPropertyValue('--margin'));
 let drawProm=null;
-function cardDrawStage2(card,pl,justPlayed=false){
-    const desiredWidth=(hands[pl].children.length+(justPlayed? 0: 1))*(2*cardWidth+margin)-margin;
+const maxHandWidth=600;
+const defaultMargin=5;
+
+function calcMargin(hand,cards){
+    if(cards==0) return defaultMargin;
+    let m=Math.min(defaultMargin,(maxHandWidth-cardWidth*2*(cards+1))/(cards));
+    hand.style.setProperty("--margin",m+"px");
+    return m;
+}
+
+let cds2qs=[new Queue(),new Queue()];
+let isDrawing=[false,false];
+async function cardDrawStage2(card,pl,justPlayed=false){
+    if(isDrawing[pl]) await new Promise((resolve)=>cds2qs[pl].enqueue(resolve));
+    isDrawing[pl]=true;
+
+    const cards=hands[pl].children.length;
+    let margin=calcMargin(hands[pl],cards);
+
+    const desiredWidth=(cards+(justPlayed? 0: 1))*(2*cardWidth+margin)-margin;
     const desiredPos=(innerWidth+desiredWidth)/2-2*cardWidth;
     hands[pl].style.width=hands[pl].offsetWidth+"px";
     void hands[pl].offsetWidth;
@@ -218,8 +234,19 @@ function cardDrawStage2(card,pl,justPlayed=false){
         },200)
         card.style.left="";
         card.style.top="";
-        if(!card.classList.contains("wackyStuff")) hands[pl].appendChild(card);
+        if(!card.classList.contains("wackyStuff")){
+            const el=hands[pl].lastElementChild;
+            if(el) el.style.transition="none";
+            hands[pl].appendChild(card);
+            setTimeout(function(){
+                if(el) el.style.transition="";
+            },100)
+        }
         if(drawProm) drawProm();
+        setTimeout(function(){
+            isDrawing[pl]=false;
+            if(!cds2qs[pl].empty()) cds2qs[pl].dequeue()();
+        },100);
         hands[pl].style.width="";
         if(finishedDrawing && hands[pl].children.length==game.startCards+game.startMana){
             finishedDrawing();
@@ -294,7 +321,9 @@ function playCard(card,pl,target,nc=null){
     }
     // hands[pl].replaceChild(div,card);
     void div.offsetHeight;
+    let margin=calcMargin(hands[pl],hands[pl].children.length-2);
     div.style.width="0px";
+    div.style.marginRight=(div==hands[pl].lastElementChild? defaultMargin-margin: 0)+"px";
 
     setTimeout(function(){
         div.remove();
@@ -336,6 +365,48 @@ function playCard(card,pl,target,nc=null){
             c2.classList.remove("suppressEvents");
         },200)
     },200);
+}
+
+function unplayCard(pl,target){
+    hoveredTT=null;
+    tooltip.style.opacity=0;
+    tooltip.style.visibility="hidden";
+
+    const card=cardSpaces[pl][target].firstElementChild;
+    card.classList.add("suppressEvents");
+
+    const div=document.createElement("div");
+    div.className="ghostCard noTrans";
+    hands[pl].appendChild(div);
+
+    const myRect=card.getBoundingClientRect();
+    const handRect=hands[pl].getBoundingClientRect();
+    const handSize=hands[pl].children.length-1;
+    let margin=calcMargin(hands[pl],handSize);
+    const targetRect={
+        top:handRect.top,
+        left:handRect.left+handSize*(2*cardWidth+margin)-margin
+    }
+
+    div.style.width="0px";
+    div.style.marginRight=defaultMargin-margin;
+    void div.offsetHeight;
+    div.classList.remove("noTrans");
+    div.style.width="84px";
+    div.style.marginRight="0px";
+    
+    let nc=pl==1? filled_canvas(2,i_cards,[2,2]): null;
+    let trans=createTransporter(card, nc, myRect, targetRect, playScr);
+
+    setTimeout(function(){
+        trans.remove();
+        hands[pl].replaceChild(nc??trans.firstElementChild,div);
+        setTimeout(function(){
+            card.classList.remove("suppressEvents");
+        },200);
+    },200);
+
+    return card;
 }
 
 function materialize(card,pl,target){
@@ -624,9 +695,28 @@ function sacrifice(){
     return catsAmongUs;
 }
 
+let clickProm=null;
+let clickPromArmor=false;
+
+playScr.addEventListener("click",function(){
+    if(clickPromArmor){
+        clickPromArmor=false;
+    }
+    else if(clickProm){
+        clickProm(null);
+        clickProm=null;
+    }
+});
+
 for(let h=0; h<cardSpacesBase[0].length; h++){
     cardSpacesBase[0][h].parentNode.parentNode.addEventListener("click",async function(){
         const i=game.myTurn==0? h: cardSpacesBase[0].length-h-1;
+
+        if(clickProm){
+            clickProm([0,i]);
+            clickProm=null;
+            return;
+        }
 
         if(hammerTime){
             const card=game.board[game.myTurn][i];
@@ -745,6 +835,18 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
     });
 }
 
+for(let h=0; h<cardSpacesBase[1].length; h++){
+    cardSpacesBase[1][h].parentNode.parentNode.addEventListener("click",async function(){
+        const i=game.myTurn==1? h: cardSpacesBase[0].length-h-1;
+
+        if(clickProm){
+            clickProm([1,i]);
+            clickProm=null;
+            return;
+        }
+    });
+}
+
 let scaleIntv=null;
 let toConsume=0;
 let scalePartial=0;
@@ -791,6 +893,22 @@ function newGame(chosen,myJSON,theirJSON,creator){
 }
 
 const hearts=playScr.querySelectorAll(".heart");
+const act1Stuff=playScr.querySelectorAll(".act1stuff");
+const gameItemDivs=playScr.querySelector("#myItems").children;
+const theirItems=playScr.querySelector("#oppItems").children;
+
+for(let i=0; i<gameItemDivs.length; i++){
+    gameItemDivs[i].addEventListener("click",async function(){
+        if(blockActions==0 && i<run.items.length && run.usedItems.indexOf(i)==-1){
+            blockActions++;
+            updateBlockActions();
+            clickPromArmor=true;
+            await run.items[i].myFunc(i);
+            blockActions--;
+            updateBlockActions();
+        }
+    });
+}
 
 let finishedDrawing=null;
 function playScreen(){
@@ -812,16 +930,26 @@ function playScreen(){
     drawDeckShadow(0,0,game.deck.length);
     drawDeckShadow(1,0,game.oppCardsLeft);
 
+    for(let c of gameItemDivs){
+        c.innerHTML="";
+    }
+    for(let c of theirItems){
+        c.innerHTML="";
+    }
+
     if(run){
         for(let i=0; i<2; i++){
-            hearts[i].style.display="";
+            act1Stuff[i].style.display="";
             hearts[i].textContent=run.life[1-i];
         }
+        updateItemDivs(gameItemDivs);
+        resign.classList.remove("selectable");
     }
     else{
         for(let i=0; i<2; i++){
-            hearts[i].style.display="none";
+            act1Stuff[i].style.display="none";
         }
+        resign.classList.add("selectable");
     }
 
     const ctx=scaleCanvas.getContext("2d");
@@ -1128,6 +1256,10 @@ nuhuh.appendChild(drawOverlay);
 const nuhuhSniper=document.querySelector("#nuhuhSniper");
 const sniperOverlay=drawNuhuh(boards[1].offsetWidth+2*nuhuhPadding,boards[1].offsetHeight+2*nuhuhPadding,50,70);
 nuhuhSniper.appendChild(sniperOverlay);
+
+const fullShadow=document.querySelector("#fullShadow");
+const fullOverlay=drawNuhuh(boards[0].offsetWidth+2*100+60,boards[0].parentNode.parentNode.offsetHeight+2*100,100,80);
+fullShadow.appendChild(fullOverlay);
 
 function drawNuhuh(w,h,shadow,corner){
     const drawOverlay=document.createElement("canvas");
@@ -1672,7 +1804,7 @@ function calcFilters(){
     else{
         let targetCost=selectedCosts[2]+1;
         for(let i=0; i<cards.length; i++){
-            if(cards[i].element==[bones,blood,energy][selectedCosts[0]]){
+            if(cards[i].element==elements[selectedCosts[0]]){
                 let cond;
                 switch(selectedCosts[1]){
                     case 2: cond=cards[i].cost==targetCost; break;

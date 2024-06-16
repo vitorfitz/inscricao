@@ -8,7 +8,6 @@ class Run{
         this.lifeTotal=lifeTotal;
         this.lanes=lanes;
         this.myTurn=myTurn;
-        this.items=[];
 
         this.over=new Promise((resolve)=>{
             this.overProm=resolve;
@@ -19,7 +18,9 @@ class Run{
     async freshStart(){
         this.life=[this.lifeTotal,this.lifeTotal];
         this.deck=[];
-        this.items=[[],[]];
+        this.items=[];
+        this.usedItems=[];
+        this.revealedItems=[];
         this.customCards=[];
         arenaDeck.innerHTML="";
         this.oppDeckSize=10;
@@ -31,6 +32,35 @@ class Run{
 }
 
 const fadeTimer=500;
+function addDrip(extraSigs,canvas,scale=2){
+    if(extraSigs.length==0) return[];
+
+    let els=[];
+    const tagHolder=document.createElement("div");
+    tagHolder.className="tagBearer";
+    canvas.appendChild(tagHolder);
+
+    for(let i=0; i<extraSigs.length; i++){
+        const bgDiv=document.createElement("div");
+        bgDiv.style.height=10*scale+"px";
+        bgDiv.style.width=15*scale+"px";
+        bgDiv.style.paddingLeft=2*scale+"px";
+        if(i!=extraSigs.length-1) bgDiv.style.marginBottom=scale/8*i_sigils.dims[1]+"px";
+        tagHolder.appendChild(bgDiv);
+
+        const tapeClone=tapeImg.cloneNode();
+        bgDiv.appendChild(tapeClone);
+
+        const el=sigilElement(extraSigs[i]);
+        els.push(el);
+        bgDiv.appendChild(el);
+        el.width=scale/2*i_sigils.dims[0];
+        el.height=scale/2*i_sigils.dims[1];
+
+        i_sigils.draw(el.getContext("2d"),scale/2,...extraSigs[i].coords,0,0);
+    }
+    return els;
+}
 
 const tapeImg=new Image();
 tapeImg.src="icons/tape.png";
@@ -50,33 +80,7 @@ class ModdedCard{
     getVisibleSigils(){return [...this.extraSigs,...this.card.visibleSigils];}
 
     addDrip(canvas,scale=2){
-        if(this.extraSigs.length==0) return[];
-
-        let els=[];
-        const tagHolder=document.createElement("div");
-        tagHolder.className="tagBearer";
-        canvas.appendChild(tagHolder);
-
-        for(let i=0; i<this.extraSigs.length; i++){
-            const bgDiv=document.createElement("div");
-            bgDiv.style.height=10*scale+"px";
-            bgDiv.style.width=15*scale+"px";
-            bgDiv.style.paddingLeft=2*scale+"px";
-            if(i!=this.extraSigs.length-1) bgDiv.style.marginBottom=scale/8*i_sigils.dims[1]+"px";
-            tagHolder.appendChild(bgDiv);
-
-            const tapeClone=tapeImg.cloneNode();
-            bgDiv.appendChild(tapeClone);
-
-            const el=sigilElement(this.extraSigs[i]);
-            els.push(el);
-            bgDiv.appendChild(el);
-            el.width=scale/2*i_sigils.dims[0];
-            el.height=scale/2*i_sigils.dims[1];
-
-            i_sigils.draw(el.getContext("2d"),scale/2,...this.extraSigs[i].coords,0,0);
-        }
-        return els;
+        return addDrip(this.extraSigs,canvas,scale);
     }
 
     render(scale){
@@ -92,6 +96,7 @@ function newRun(otherJSON,configs){
     run.freshStart();
     updateHPs();
     updateDeck(1);
+    updateItemDivs();
     cardPick(2,10,buffedCards);
     fader.style.animationDuration=fadeTimer+"ms";
 }
@@ -1029,7 +1034,7 @@ async function renderMap(xSpacing=150,ySpacing=115,len=2,conns=3){
 const heartDivs=map.querySelectorAll(".heart");
 const deckDivs=map.querySelectorAll(".actual");
 const deckShadows2=map.querySelectorAll(".shadow");
-const itemDiv=map.querySelector(".backg .items");
+const itemDivs=map.querySelector(".backg .items").children;
 
 for(let i=0; i<2; i++){
     const r=filled_canvas(2,i_cards,[2,2]);
@@ -1602,7 +1607,7 @@ bcBtn.addEventListener("click",async function(){
     if(success){
         const newCard=new Card();
         run.deck.push(newCard);
-        newCard.init("Custom",chosenCost,bcAtk,bcHP,chosenEl,sigilObjs,null,[5,16],false,true);
+        newCard.init("Custom",chosenCost,bcAtk,bcHP,elements[chosenEl],sigilObjs,null,[5,16],false,true);
         ncCanvas=newCard.render(4);
         ncCanvas.style.top=rect.top+rect.height/2+"px";
         ncCanvas.style.left=rect.left+rect.width/2+"px";
