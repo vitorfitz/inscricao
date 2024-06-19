@@ -393,6 +393,7 @@ const s_beehive=new Sigil();
 const s_bells=new Sigil();
 const s_extra_attack=new Sigil();
 const s_cant_be_sacced=new Sigil();
+const s_packin=new Sigil();
 const s_alpha=new BuffSigil();
 const s_stinky=new BuffSigil();
 const s_hand=new StatSigil();
@@ -481,6 +482,7 @@ const c_bone_heap=new Card();
 const c_mirror_tent=new Card();
 const c_hand_tent=new Card();
 const c_rock=new Card();
+const c_pack_rat=new Card();
 
 const a_bone_horn=new VanillaActivated();
 const a_disentomb=new VanillaActivated();

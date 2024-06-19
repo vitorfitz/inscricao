@@ -36,13 +36,37 @@ const pliersItem=new Item("Pliers","Causa 1 de dano ao oponente.","pliers.webp",
     game.checkScales();
 });
 
-const bonesItem=new Item("Hoggy Bank","Ganhe 2 ossos.","bones.webp",()=>1,async function(i){
+const bonesItem=new Item("Hoggy Bank","Ganhe 2 ossos.","bones.webp",()=>0.25,async function(i){
     await consumeItem(i);
     game.bones[game.turn]+=2;
     updateBones(game.turn);
 });
 
-const lensItem=new Item("Magpie's Lens","Espie secretamente a mão e os itens do oponente.","lens.webp",()=>99,
+function maintainOppItems(search=run.revealedItems){
+    let ind;
+
+    if(run.revealedItems.length>2){
+        ind=run.oppUnusedItems.indexOf(null);
+        if(ind==-1){
+            if(run.usedQueue.length==0){
+                oldest=lensItem.id;
+            }
+            else{
+                oldest=run.usedQueue[0];
+                run.usedQueue.splice(0,1);
+            }
+            ind=search.indexOf(oldest);
+        }
+        run.revealedItems.splice(ind,1);
+        run.oppUnusedItems.splice(ind,1);
+    }
+    else{
+        ind=run.revealedItems.length;
+    }
+    return ind;
+}
+
+const lensItem=new Item("Magpie's Lens","Espie secretamente a mão e os itens do oponente.","lens.webp",()=>1,
 null,
 async function(i){
     sendMsg(codeShowMe);
@@ -88,21 +112,34 @@ async function(i){
 
             const ref=oppCards[i];
             const cardDivDiv=document.createElement("div");
-            cardDivDiv.className="revealed";
+            cardDivDiv.className="revealed anim";
             cardDivDiv.appendChild(cardDiv);
             hands[1].replaceChild(cardDivDiv,ref);
             cardDivDiv.prepend(ref);
+            setTimeout(function(){
+                cardDivDiv.classList.remove("anim");
+            },500);
         }
 
+        const ric=[...run.oppUnusedItems];
         if(firstAndRest[0]!=""){
             const itemCodes=firstAndRest[0].split(" ");
             for(let i=0; i<itemCodes.length; i++){
                 const code=parseInt(itemCodes[i]);
-                if(run.revealedItems.indexOf(code)==-1){
+                const ind=ric.indexOf(code);
+                if(ind==-1){
+                    let ind=maintainOppItems(ric);
+                    run.revealedItems.push(code);
+                    run.oppUnusedItems.push(code);
+
+                    ric[ind]=null;
                     const el=sigilElement(itemTypes[code],"img");
                     el.src=itemTypes[code].file.src;
-                    theirItems[run.revealedItems.length].appendChild(el);
-                    run.revealedItems.push(code);
+                    theirItems[ind].innerHTML="";
+                    theirItems[ind].appendChild(el);
+                }
+                else{
+                    ric[ind]=null;
                 }
             }
         }
@@ -124,7 +161,7 @@ function removeListeners(card){
     }
 }
 
-const hookItem=new Item("Fisherman's Hook","Volte uma carta para a sua mão.","hook.webp",()=>99,
+const hookItem=new Item("Fisherman's Hook","Mude uma carta sua de posição.","hook.webp",()=>1,
 async function(i,args){
     const target=args[0];
     const targetData=game.board[game.turn][target];
@@ -142,9 +179,17 @@ async function(i,args){
     }
     removeListeners(targetData);
 
-    await Promise.all([consumeItem(i),game.addCardToHand(targetData.getCard(),targetData.side,undefined,null).then((card)=>{
+    await Promise.all([consumeItem(i),game.addCardToHand(targetData.getCard(),targetData.side,function(c){
+        c.health=targetData.health;
+        c.updateStat(1,c.health);
+    },null).then((card)=>{
         if(uiTurn==0){
             cardDiv.parentNode.replaceChild(card.canvas,cardDiv);
+            selectCard(card);
+            isSaccing=false;
+            hooked=true;
+            blockActions++;
+            updateBlockActions();
         }
     })]);
 },
@@ -174,76 +219,55 @@ async function(i){
     nuhuhSniper.style.opacity="0";
 });
 
-const bleachItem=new Item("Magical Bleach","Remova as habilidades de uma carta.","silence.webp",()=>99,
+const bleachItem=new Item("Magical Bleach","Remova as habilidades das cartas do oponente.","silence.webp",()=>1,
 async function(i,args){
-    const target=args[1],pl=args[0];
-    const targetData=game.board[pl][target];
-
-    hoveredTT=null;
-    tooltip.style.visibility="hidden";
-    tooltip.style.opacity="0";
-
-    let s2=[];
-    targetData.pos=null;
-    for(let s of targetData.sigils){
-        if(s.funcs instanceof StatSigil) s2.push(s);
-        else for(let q of s.funcs.onCardMoved){
-            if(q.type==listen_me) await q.func(targetData,target,targetData,s.data);
+    const pl=1-game.turn;
+    const b=game.board[pl];
+    for(let i=0; i<b.length; i++){
+        const targetData=b[i];
+        if(targetData==null){
+            continue;
         }
-    }
-    targetData.sigils=s2;
 
-    for(let l of [...game.movementListeners[pl]]){
-        await l.func(l.caller,target,targetData,l.data);
-    }
-    targetData.pos=target;
-    removeListeners(targetData);
+        const target=targetData.pos;
+        let s2=[];
+        targetData.pos=null;
+        for(let s of targetData.sigils){
+            if(s.funcs instanceof StatSigil) s2.push(s);
+            else for(let q of s.funcs.onCardMoved){
+                if(q.type==listen_me) await q.func(targetData,target,targetData,s.data);
+            }
+        }
+        targetData.sigils=s2;
 
-    const purged=targetData.sigilEls.filter((x)=>!x.classList.contains("bleach_survivor"));
-    for(let s of purged){
-        s.style.animation="fadeIn 500ms linear reverse";
-        s.style.opacity="0";
-    }
-    setTimeout(function(){
+        for(let l of [...game.movementListeners[pl]]){
+            await l.func(l.caller,target,targetData,l.data);
+        }
+        targetData.pos=target;
+        removeListeners(targetData);
+
+        const purged=targetData.sigilEls.filter((x)=>!x.classList.contains("bleach_survivor"));
         for(let s of purged){
-            s.remove();
+            s.style.animation="fadeIn 500ms linear reverse";
+            s.style.opacity="0";
         }
-    },500);
-    await consumeItem(i);
-},
-async function(i){
-    boards[0].classList.add("cardsClickable");
-    boards[1].classList.add("cardsClickable");
-    const rect=boards[1].parentNode.parentNode.getBoundingClientRect();
-    fullOverlay.style.top=rect.top-nuhuhPadding+"px";
-    fullOverlay.style.left=rect.left-nuhuhPadding+"px";
-    fullShadow.style.transitionDuration="300ms";
-    fullShadow.style.opacity="0.5";
-
-    while(true){
-        let res=await Promise.any([game.over,new Promise((resolve)=>clickProm=resolve)]);
-        if(!res){
-            break;
-        }
-        boards[0].classList.remove("cardsClickable");
-        boards[1].classList.remove("cardsClickable");
-        let [pl,target]=res;
-        pl=+(pl!=game.myTurn);
-        if(game.board[pl][target]!=null){
-            sendMsg(codeItem+" "+bleachItem.id+" "+pl+" "+target);
-            bleachItem.theirFunc(i,[pl,target]);
-            break;
-        }
+        setTimeout(function(){
+            for(let s of purged){
+                s.remove();
+            }
+        },500);
     }
-
-    fullShadow.style.transitionDuration="100ms";
-    fullShadow.style.opacity="0";
+    
+    await consumeItem(i);
 });
 
 function closeItemModal(){
     itemModal.style.opacity="0";
     itemModal.style.visibility="hidden";
     itemModal.style.transitionDelay="0ms";
+    hoveredTT=null;
+    tooltip.style.visibility="hidden";
+    tooltip.style.opacity=0;
 }
 
 function addItem(it){

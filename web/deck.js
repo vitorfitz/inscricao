@@ -76,7 +76,7 @@ menuOpts[1].addEventListener("click",async function(){
     isSearchOpen=true;
 });
 
-let gameSearchIntv=null,isSearchOpen=false;
+let gameSearchIntv=null;
 function startGameSearch(){
     respQueue.clear();
     // gameSearchIntv=setInterval(function(){
@@ -658,7 +658,7 @@ let sacs=0;
 let sacOverlays=[];
 let sacCards=[];
 let sacPos=[];
-let isSaccing=true;
+let isSaccing=true,hooked=false;
 
 function sacAnim(card,side,pos){
     const sacOverlay=document.createElement("canvas");
@@ -830,6 +830,7 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
                 blockActions--;
                 updateBlockActions();
                 isSaccing=true;
+                hooked=false;
             }
         }
     });
@@ -837,7 +838,7 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
 
 for(let h=0; h<cardSpacesBase[1].length; h++){
     cardSpacesBase[1][h].parentNode.parentNode.addEventListener("click",async function(){
-        const i=game.myTurn==1? h: cardSpacesBase[0].length-h-1;
+        const i=game.myTurn==0? h: cardSpacesBase[0].length-h-1;
 
         if(clickProm){
             clickProm([1,i]);

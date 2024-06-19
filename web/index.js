@@ -677,6 +677,28 @@ s_mirror.onTurnEnded.push(new Listener(listen_any,async function(me){
     updateMirror(me);
 },-1));
 
+s_packin.init([4,8],"Trinket Bearer","Ganhe um item aleatório.");
+s_packin.onCardPlayed.push(new Listener(listen_me,async function(me){
+    if(game.turn!=game.myTurn || (run.items.length>2 && run.usedItems.length==0)) return;
+
+    const picked=itemTypes[genItem(1)[0]];
+    let ind;
+    if(run.items.length>2){
+        ind=run.usedItems[0];
+        run.usedItems.splice(0,1);
+        run.items[ind]=picked;
+    }
+    else{
+        ind=run.items.length;
+        run.items.push(picked);
+    }
+
+    const el=sigilElement(picked,"img");
+    el.src=picked.file.src;
+    gameItemDivs[ind].innerHTML="";
+    gameItemDivs[ind].appendChild(el);
+}));
+
 const cards=[];
 const allCards=[];
 const tooltip=document.querySelector("#tooltip");
@@ -966,7 +988,7 @@ class GameCard{
     async play(pos,faceDown=null){
         // console.log("<PLAYING "+this.debugInfo());
 
-        spendResource(this.card.element,this.card.cost);
+        if(!hooked) spendResource(this.card.element,this.card.cost);
         if(game.turn==game.myTurn){
             const ind=game.hand.indexOf(this);
             if(ind!=-1) game.hand.splice(ind,1);
@@ -991,17 +1013,19 @@ class GameCard{
         this.side=game.turn;
         this.pos=pos;
         game.board[this.side][this.pos]=this;
-        for(let l of [...game.playListeners[game.turn]]){
-            // console.log("<ONPLAY ABILITY "+l.caller.debugInfo());
-            await l.func(l.caller,this,l.data);
-            // console.log(">ONPLAY ABILITY "+l.caller.debugInfo());
-        }
-        for(let s of this.sigils){
-            for(let f of s.funcs.onCardPlayed){
-                if(f.type==listen_me){
-                    //console.log("<ONPLAY ABILITY "+this.debugInfo());
-                    await f.func(this,this,s.data);
-                    //console.log(">ONPLAY ABILITY "+this.debugInfo());
+        if(!hooked){
+            for(let l of [...game.playListeners[game.turn]]){
+                // console.log("<ONPLAY ABILITY "+l.caller.debugInfo());
+                await l.func(l.caller,this,l.data);
+                // console.log(">ONPLAY ABILITY "+l.caller.debugInfo());
+            }
+            for(let s of this.sigils){
+                for(let f of s.funcs.onCardPlayed){
+                    if(f.type==listen_me){
+                        //console.log("<ONPLAY ABILITY "+this.debugInfo());
+                        await f.func(this,this,s.data);
+                        //console.log(">ONPLAY ABILITY "+this.debugInfo());
+                    }
                 }
             }
         }
@@ -1332,6 +1356,7 @@ class Game{
         unselectCard();
         cancelHammer();
         isSaccing=true;
+        hooked=false;
         clickProm=null;
         clickPromArmor=false;
         blockActions++;
@@ -1373,6 +1398,8 @@ class Game{
             }
             else{
                 run.revealedItems=[];
+                run.usedQueue=[];
+                run.oppUnusedItems=[];
                 const oldItems=run.items;
                 run.items=[];
                 for(let i=0; i<oldItems.length; i++){
@@ -1689,7 +1716,7 @@ class Game{
             }
             else{
                 card=this.deck.pop();
-                // card=c_rat_king;
+                // card=c_pack_rat;
                 cardsLeft=this.deck.length;
             }
         }
@@ -1918,17 +1945,19 @@ class Game{
                     let startPos=ss.indexOf(" ");
 
                     const it=itemTypes[itemID];
-                    let ind=run.revealedItems.indexOf(itemID);
+                    let ind=run.oppUnusedItems.indexOf(itemID);
                     if(ind==-1){
-                        ind=run.revealedItems.length;
+                        ind=maintainOppItems();
+                        run.oppUnusedItems.push(null);
+                        run.revealedItems.push(itemID);
                         const el=sigilElement(it,"img");
                         el.src=it.file.src;
                         theirItems[ind].appendChild(el);
-                        run.revealedItems.push(null);
                     }
                     else{
-                        run.revealedItems[ind]=null;
+                        run.oppUnusedItems[ind]=null;
                     }
+                    run.usedQueue.push(itemID);
                     await it.theirFunc(ind,startPos==-1? null: ss.substring(startPos+1).split(" ").map(x=>parseInt(x)));
                     break;
                 

@@ -63,6 +63,7 @@ let socket=new WebSocket(`${protocol}//${host}:${port}/ws`);
 let promQueue=new Queue();
 let respQueue=new Queue();
 let canStart=false;
+let isSearchOpen=false;
 
 socket.onmessage = function(event) {
     console.log("got "+event.data);

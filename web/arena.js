@@ -21,6 +21,8 @@ class Run{
         this.items=[];
         this.usedItems=[];
         this.revealedItems=[];
+        this.oppUnusedItems=[];
+        this.usedQueue=[];
         this.customCards=[];
         arenaDeck.innerHTML="";
         this.oppDeckSize=10;
@@ -97,7 +99,8 @@ function newRun(otherJSON,configs){
     updateHPs();
     updateDeck(1);
     updateItemDivs();
-    cardPick(2,10,buffedCards);
+    // cardPick(3,10,buffedCards);
+    cardPick(10,0,randomCards);
     fader.style.animationDuration=fadeTimer+"ms";
 }
 
@@ -783,11 +786,8 @@ const buildNode=new NodeType("Build-a-Card","Crie uma carta e adicione ao seu de
 const fireNode=new NodeType("Campfire","Aumenta o ataque ou vida de uma carta.","Campfire.webp",function(){
 
 },()=>2);
-const itemNode=new NodeType("Item","Escolha um de 3 itens.","item.webp",async function(){
-    itemModal.style.opacity="1";
-    itemModal.style.visibility="visible";
-    itemModal.style.transitionDelay="";
 
+function genItem(n){
     let totalLots=0;
     let lots=[];
     for(let i=0; i<itemTypes.length; i++){
@@ -795,7 +795,40 @@ const itemNode=new NodeType("Item","Escolha um de 3 itens.","item.webp",async fu
         totalLots+=prob;
         lots.push(prob);
     }
-    const picked=pickRandom(lots,totalLots,3);
+    return pickRandom(lots,totalLots,n);
+}
+
+const itemNode=new NodeType("Item","Escolha um de 3 itens.","item.webp",async function(n){
+    if(run.items.length>=3){
+        run.deck.push(c_pack_rat);
+
+        const wRect=mapWrapper.getBoundingClientRect();
+        const myRect={top: wRect.top+n.y, left: wRect.left+n.x};
+        const targetRectish=deckDivs[0].getBoundingClientRect();
+        const targetRect={top: targetRectish.top+targetRectish.height/2, left: targetRectish.left+targetRectish.width/2};
+        const trans=createTransporter(c_pack_rat.render(1), filled_canvas(1,i_cards,[2,2]), myRect, targetRect, map, 250,2,new Promise((resolve)=>setTimeout(function(){
+            resolve();
+            setTimeout(function(){
+                trans.remove();
+                drawShadow(deckShadows2[0], run.deck.length-shownCards);
+                deckDivs[0].firstElementChild.style.visibility="";
+            },250);
+        },500)),undefined,true);
+        
+        trans.style.translate="-50% -50%";
+        trans.style.transitionProperty="opacity,top,left,scale,transform";
+        trans.style.transitionDuration="150ms";
+        trans.style.opacity=0;
+        void trans.offsetHeight;
+        trans.style.opacity=1;
+        return;
+    }
+
+    itemModal.style.opacity="1";
+    itemModal.style.visibility="visible";
+    itemModal.style.transitionDelay="";
+
+    const picked=genItem(3);
     itemPres.innerHTML="";
     let dontBeGreedy=false;
 
@@ -940,7 +973,8 @@ async function renderMap(xSpacing=150,ySpacing=115,len=2,conns=3){
         lots.push(prob);
     }
     for(let i=1; i<mapNodes.length-1; i++){
-        const picked=pickRandom(lots,totalLots,3);
+        // const picked=pickRandom(lots,totalLots,3);
+        const picked=[itemNode.id,itemNode.id,itemNode.id];
         // for(let j=0; j<vis.length; j++){
         //     const n=mapNodes[i][vis[j]];
         //     n.type=nodeTypes[picked[j]];
@@ -990,7 +1024,7 @@ async function renderMap(xSpacing=150,ySpacing=115,len=2,conns=3){
                     if(currNode && currNode.fwd.indexOf(node)!=-1){
                         const old=currNode;
                         currNode=node;
-                        await node.type.fn();
+                        await node.type.fn(node);
 
                         old.el.classList.remove("currentNode");
                         old.el.style.cursor="";
@@ -1063,28 +1097,37 @@ function centerRect(r){
     }
 }
 
-function createTransporter(card, nc, myRect, targetRect,el,dur=-1,scale=-1,qlass="transporter") {
+function createTransporter(card, nc, myRect, targetRect,el,dur=-1,scale=-1,prom=null,qlass="transporter", reverseNC=false) {
     const trans = document.createElement("div");
     trans.className = qlass;
     el.appendChild(trans);
     trans.appendChild(card);
-    if(dur!=-1) trans.style.transitionDuration=dur+"ms";
-    if(nc) trans.style.transform = "rotateY(180deg)";
+    if(nc && !reverseNC) trans.style.transform = "rotateY(180deg)";
 
     trans.style.top = myRect.top + "px";
     trans.style.left = myRect.left + "px";
-    void trans.offsetHeight;
-    trans.style.top = targetRect.top + "px";
-    trans.style.left = targetRect.left + "px";
-    if(scale!=-1) trans.style.scale=scale;
-    
-    if(nc){
-        trans.style.transform = "rotateY(0deg)";
-        setTimeout(function () {
-            trans.replaceChild(nc, card);
-        }, dur/2);
+
+    function theRest(){
+        if(dur!=-1) trans.style.transitionDuration=dur+"ms";
+        void trans.offsetHeight;
+        trans.style.top = targetRect.top + "px";
+        trans.style.left = targetRect.left + "px";
+        if(scale!=-1) trans.style.scale=scale;
+        
+        if(nc){
+            trans.style.transform = reverseNC? "rotateY(180deg)": "rotateY(0deg)";
+            setTimeout(function () {
+                trans.replaceChild(nc, card);
+            }, dur/2);
+        }
     }
 
+    if(prom){
+        prom.then(theRest);
+    }
+    else{
+        theRest();
+    }
     return trans;
 }
 
@@ -1235,7 +1278,7 @@ async function playTrial(i){
         if(j==i){
             const myRect=ch.getBoundingClientRect();
             chosenRect={top:myRect.top-100,left:innerWidth/2-myRect.width/2};
-            chosenTrans=createTransporter(ch,null,myRect,chosenRect,cardSelect,-1,-1,"transporter2");
+            chosenTrans=createTransporter(ch,null,myRect,chosenRect,cardSelect,-1,-1,null,"transporter2");
         }
         else{
             ch.style.opacity=0;
@@ -1283,7 +1326,7 @@ async function playTrial(i){
     for(let i=0,j=inds.length-len; i<len; i++,j++){
         const cardBack=filled_canvas(2,i_cards,[2,2]);
         const targetRect={top:cardHeight*6+50+chosenRect.top,left:(cardWidth*4+50)*(i-1)+innerWidth/2};
-        const trans=createTransporter(cardBack,ch[inds[j]],starterRect,targetRect,cardSelect,300,2,"transporter3");
+        const trans=createTransporter(cardBack,ch[inds[j]],starterRect,targetRect,cardSelect,300,2,null,"transporter3");
         transes.push(trans);
         const contrib=trial.reducer(run.deck[inds[j]]);
         console.log(contrib);

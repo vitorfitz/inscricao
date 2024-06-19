@@ -82,6 +82,7 @@ c_bone_horn.init("Bone Lord's Horn",6,1,1,bones,[],a_bone_horn,[4,1]);
 c_tomb_raider.init("Tomb Robber",1,0,2,bones,[],a_disentomb,[0,12]);
 c_plasma.init("Plasma Jimmy",2,0,2,energy,[],a_energy_gun,[0,4]);
 c_bone_heap.init("Bone Heap",1,0,2,bones,[],a_enlarge,[5,1]);
-c_hand_tent.init("Hand Tentacle",2,0,4,blood,[s_hand],null,[8,3]);
+c_hand_tent.init("Hand Tentacle",2,0,3,blood,[s_hand],null,[8,3]);
 c_mirror_tent.init("Mirror Tentacle",1,0,4,blood,[s_mirror],null,[8,4]);
 c_rock.init("Boulder",0,0,3,bones,[s_cant_be_sacced],null,[6,16],false);
+c_pack_rat.init("Pack Rat",2,2,3,blood,[s_packin],null,[7,16],false);
