@@ -8,6 +8,7 @@ class Run{
         this.lifeTotal=lifeTotal;
         this.lanes=lanes;
         this.myTurn=myTurn;
+        this.manas=[-1,-1];
 
         this.over=new Promise((resolve)=>{
             this.overProm=resolve;
@@ -18,6 +19,7 @@ class Run{
     async freshStart(){
         this.life=[this.lifeTotal,this.lifeTotal];
         this.deck=[];
+        this.fdeck=[];
         this.items=[];
         this.usedItems=[];
         this.revealedItems=[];
@@ -26,10 +28,22 @@ class Run{
         this.customCards=[];
         arenaDeck.innerHTML="";
         this.oppDeckSize=10;
+        this.poisoned=false;
 
         mapWrapper.innerHTML="";
         const mCanvas=await renderMap();
         mapWrapper.appendChild(mCanvas);
+    }
+
+    getMapLen(){
+        const dif=run.life[0]-run.life[1];
+        if(dif>=20){
+            return 1;
+        }
+        else if(dif<=-10){
+            return 3;
+        }
+        else return 2;
     }
 }
 
@@ -72,6 +86,7 @@ class ModdedCard{
         this.atkBoost=0;
         this.hpBoost=0;
         this.extraSigs=[];
+        this.inUse=true;
         // this.extraAct=null;
     }
 
@@ -85,10 +100,14 @@ class ModdedCard{
         return addDrip(this.extraSigs,canvas,scale);
     }
 
-    render(scale){
-        let c=this.card.render(scale,undefined,this.card.attack+this.atkBoost,this.card.health+this.hpBoost);
-        this.addDrip(c,scale);
+    renderAlsoReturnCtx(scale){
+        let c=this.card.renderAlsoReturnCtx(scale,undefined,this.card.attack+this.atkBoost,this.card.health+this.hpBoost);
+        this.addDrip(c.div,scale);
         return c;
+    }
+
+    render(scale){
+        return this.renderAlsoReturnCtx(scale).div;
     }
 }
 
@@ -99,8 +118,8 @@ function newRun(otherJSON,configs){
     updateHPs();
     updateDeck(1);
     updateItemDivs();
-    // cardPick(3,10,buffedCards);
-    cardPick(10,0,randomCards);
+    cardPick(1,10,buffedCards);
+    // cardPick(10,0,randomCards);
     fader.style.animationDuration=fadeTimer+"ms";
 }
 
@@ -111,10 +130,22 @@ ccShadow.appendChild(ccOverlay);
 
 const pickSpaces=pick3.querySelectorAll(".cardSpace");
 let presentedCards=[];
+let halt=false;
+
 for(let i=0; i<pickSpaces.length; i++){
     pickSpaces[i].addEventListener("click",function(){
+        if(halt) return;
         if(trialMode){
             playTrial(i);
+        }
+        else if(cardPickPos==cardPickEls.length && run.manas[0]==-1){
+            if(i==1){
+                run.manas[0]=0;
+            }
+            else if(i==2){
+                run.manas[0]=1;
+            }
+            stopPicking(true);
         }
         else if(presentedCards[i]){
             const card=presentedCards[i];
@@ -130,17 +161,32 @@ for(let i=0; i<pickSpaces.length; i++){
             hoveredTT=null;
             tooltip.style.opacity=0;
             tooltip.style.visibility="hidden";
+            halt=true;
 
             setTimeout(function(){
                 cardPickEls[pos].appendChild(card.render(2));
                 trans.remove();
+                halt=false;
                 if(pos!=cardPickEls.length-1){
                     presentCards();
                 }
             },250);
 
             if(cardPickPos==cardPickEls.length){
-                stopPicking();
+                if(run.manas[0]==-1){
+                    setTimeout(function(){
+                        pick3.style.width=pick3.offsetWidth+"px";
+                        pickSpaces[0].style.display="none";
+                        rerollEl.style.display="none";
+                        pickSpaces[1].innerHTML="";
+                        pickSpaces[1].appendChild(c_squirrel.render(4));
+                        pickSpaces[2].innerHTML="";
+                        pickSpaces[2].appendChild(c_skeleton.render(4));
+                    },250);
+                }
+                else{
+                    stopPicking(); 
+                }
             }
         }
     });
@@ -149,7 +195,7 @@ for(let i=0; i<pickSpaces.length; i++){
 function randomCards(){
     const copy=[...cards];
     shuffle(copy,pickSpaces.length);
-    return copy.slice(cards.length-pickSpaces.length);
+    return copy.slice(cards.length-pickSpaces.length).map((x)=>new ModdedCard(x));
 }
 
 function presentCards(){
@@ -166,25 +212,34 @@ function presentCards(){
     }
 }
 
-function stopPicking(){
+function stopPicking(delayRemoval=false){
     presentedCards=[];
+    halt=false;
     fader.classList.add("fade");
     setTimeout(function(){
         fader.classList.remove("fade");
         cardSelect.style.visibility="hidden";
-        map.style.visibility="visible";
+        showMap();
         arenaDeck.innerHTML="";
+        if(delayRemoval){
+            for(let i=0; i<pickSpaces.length; i++){
+                pickSpaces[i].innerHTML="";
+            }
+        }
     },fadeTimer);
     hoveredTT=null;
     tooltip.style.opacity=0;
     tooltip.style.visibility="hidden";
-    for(let i=0; i<pickSpaces.length; i++){
-        pickSpaces[i].innerHTML="";
+    if(!delayRemoval){
+        for(let i=0; i<pickSpaces.length; i++){
+            pickSpaces[i].innerHTML="";
+        }
     }
-    updateDeck(0);
 }
 
-const arenaDeck=document.querySelector("#arena_deck");
+const arenaDeck=document.createElement("div");
+arenaDeck.id="arena_deck";
+const arenaDeckCC=document.querySelector("#arena_deck_cc");
 let cardPickPos=0;
 let cardPickEls=[];
 let generate;
@@ -216,16 +271,20 @@ function cardPick(n,rr=0,gen=randomCards){
     cardPickEls=[];
     generate=gen;
     rerolls=rr;
+    pickSpaces[0].style.display="";
+    arenaDeckCC.appendChild(arenaDeck);
+    calcMargin(arenaDeck,run.fdeck.length,5,1000);
     cardPickPt2(n);
 }
 
 function cardPickPt2(n){
     updateReroll();
-    for(let i=0; i<run.deck.length; i++){
-        arenaDeck.appendChild(run.deck[i].render(2));
+    for(let i=0; i<run.fdeck.length; i++){
+        arenaDeck.appendChild(run.fdeck[i].render(2));
     }
     for(let i=0; i<n; i++){
         cardPickEls.push(document.createElement("div"));
+        cardPickEls[i].style.marginLeft="5px";
         arenaDeck.appendChild(cardPickEls[i]);
     }
     presentCards();
@@ -407,7 +466,7 @@ let sigilEstimates={};
         if(has(pe,s_sidestep) || has(pe,s_push) || has(pe,s_sq_spawner) || has(pe,s_skele_spawner) || has(pe,s_burrow) || has(pe,s_guardian)) pe.additive+=Math.max(0,Math.min(2.2,pe.dt-0.333)*pe.defense*0.2);
     }};
     se[s_double_death.id]={mod:(pe)=>{
-        pe.additive+=0.7;
+        pe.additiveExt+=0.9;
         pe.presence+=0.7;
     }};
     se[s_fecundity.id]={ext:(pe)=>{
@@ -419,11 +478,11 @@ let sigilEstimates={};
         else pe.additiveExt+=0.5;
     }};
     se[s_sq_spawner.id]={mod:(pe)=>{
-        pe.additive+=0.8;
+        if(!has(pe,s_dam)) pe.additive+=0.8;
         pe.presence+=0.4;
     }};
     se[s_skele_spawner.id]={mod:(pe)=>{
-        pe.additive+=0.8;
+        if(!has(pe,s_dam)) pe.additive+=0.8;
         pe.presence+=0.6;
     }};
     se[s_rabbit.id]={ext:(pe)=>{
@@ -433,7 +492,7 @@ let sigilEstimates={};
         pe.additiveExt+=Math.max(0,5-pe.res/2);
     }};
     se[s_flying.id]={uselessAt0: true,boost:(pe)=>{
-        if(pe.offense!=0) pe.additive+=((0.5+pe.defense)*(0.5+pe.offense))*0.18;
+        if(pe.offense!=0) pe.additive+=((0.5+pe.defense)*(0.5+pe.offense))*0.28;
     }};
     se[s_energy.id]={ext:(pe)=>{
        pe.res+=2.5/2**(pe.res/7.5);
@@ -449,7 +508,7 @@ let sigilEstimates={};
         }
     }};
     se[s_sidestep.id]={boost:(pe)=>{
-        if(!has(pe,s_burrow) && !has(pe,s_guardian) && !has(pe,s_sq_spawner) && !has(pe,s_skele_spawner) && !has(pe,s_push) && !(has(pe,s_death_touch) && pe.attack>0)) pe.additive+=pe.defense/8;
+        if(!has(pe,s_burrow) && !has(pe,s_guardian) && !has(pe,s_sq_spawner) && !has(pe,s_skele_spawner) && !has(pe,s_push) && !has(pe,s_dam) && !(has(pe,s_death_touch) && pe.attack>0)) pe.additive+=pe.defense/8;
     }};
     se[s_guardian.id]={};
     se[s_free_sac.id]={mod:(pe)=>{
@@ -474,7 +533,7 @@ let sigilEstimates={};
                     pe.additive+=(pe.defense+0.5+1.5**Math.min(10,pe.defense)/15)*0.64;
                 }
                 else{
-                    pe.additive+=pe.defense*0.5+0.5;
+                    pe.additive+=pe.defense*0.25+0.5;
                 }
             }
         }
@@ -487,10 +546,10 @@ let sigilEstimates={};
         }
     }};
     se[s_worthy.id]={ext:(pe)=>{
-        if(!has(pe,s_free_sac)) pe.res+=7.5/2**(pe.res/7.5);
+        if(!has(pe,s_free_sac)) pe.res+=6.5/2**((pe.res-pe.defense/pe.res*2)/6.5);
     }};
     se[s_tutor.id]={boost:(pe)=>{
-        pe.additiveExt+=6.5;
+        pe.additiveExt+=6;
     }};
     se[s_burrow.id]={mod:(pe)=>{
         pe.defense*=0.75;
@@ -605,9 +664,9 @@ class PowerEstimate{
 }
 
 const costToPower=[
-    [3,4.5,6,7.5,9,11,13,15,17,18,21,23,25],
-    [3,6.5,10,15,25],
-    [3,3.5,4.5,6,7.5,9,11]
+    [3,4.5,6,7.5,9,11,13,15,17,19,21,23,25],
+    [3,6,10,15,25],
+    [3,3.5,4.5,5.5,7,8.5,10]
 ];
 function elToPosition(el){
     switch(el){
@@ -666,7 +725,7 @@ function buffedCards(){
                     for(let i=0; i<numMono; i++){
                         combos.push([j]);
                         if(j==s_burrow) for(let i=0; i<3; i++) combos.push([j]);
-                        if(j==s_tutor) for(let i=0; i<9; i++) combos.push([j]);
+                        if(j==s_tutor) for(let i=0; i<3; i++) combos.push([j]);
                         if(j==s_flying) for(let i=0; i<3; i++) combos.push([j]);
                     }
                 }
@@ -682,7 +741,7 @@ function buffedCards(){
                     combos.push(combo); 
                     if(combo.indexOf(s_brittle)!=-1) {for(let i=0; i<19; i++) combos.push(combo)};
                     if(combo.indexOf(s_burrow)!=-1) for(let i=0; i<3; i++) combos.push(combo);
-                    if(combo.indexOf(s_tutor)!=-1) for(let i=0; i<9; i++) combos.push(combo);
+                    if(combo.indexOf(s_tutor)!=-1) for(let i=0; i<3; i++) combos.push(combo);
                     if(combo.indexOf(s_flying)!=-1) for(let i=0; i<3; i++) combos.push(combo);
                 }
                 j++;
@@ -739,16 +798,19 @@ const cardNode=new NodeType("Card Choice","Adicione 2 cartas ao seu deck.","pick
         cardPick(2,3);
         resolve();
     },fadeTimer));
-},()=>999);
+},()=>4);
 
 const battleNode=new NodeType("Batalha",null,"battle.webp",function(){
     (async function(){
         waitSpan.style.display="inline-flex";
-        sendMsg(codeDecision+" "+run.deck.length);
+        sendMsg(codeDecision+" "+run.fdeck.length+" "+run.manas[0]);
         let msg=await Promise.any([getNextMsg(),run.over]);
         waitSpan.style.display="";
         if(run.overBool) return;
-        run.oppDeckSize=parseInt(msg.substring(2));
+
+        let spl=msg.substring(2).split(" ");
+        run.oppDeckSize=parseInt(spl[0]);
+        if(spl.length>1) run.manas[1]=parseInt(spl[1]);
         
         fader.classList.add("fade");
         await new Promise((resolve)=>setTimeout(function(){
@@ -757,9 +819,9 @@ const battleNode=new NodeType("Batalha",null,"battle.webp",function(){
             fader.style.animationDuration="";
             resolve();
         },fadeTimer));
-        
-        game=new Game([0,0],run.myTurn,run.tippingPoint,run.cardsPerTurn);
-        game.freshStart(run.deck,run.oppDeckSize);
+
+        game=new Game(run.myTurn==0? run.manas: [run.manas[1],run.manas[0]],run.myTurn,run.tippingPoint,run.cardsPerTurn);
+        game.freshStart(run.fdeck,run.oppDeckSize,10);
         game.initConstants();
         playScreen();
         run.myTurn=1-run.myTurn;
@@ -771,10 +833,10 @@ const trialNode=new NodeType("Deck Trial","Escolha uma categoria, se seu deck pa
     await new Promise((resolve)=>setTimeout(function(){
         fader.classList.remove("fade");
         trialMode=true;
-        cardPick(0,3,buffedCards);
+        cardPick(0,1,buffedCards);
         resolve();
     },fadeTimer));
-},()=>1);
+},()=>2);
 const buildNode=new NodeType("Build-a-Card","Crie uma carta e adicione ao seu deck.","build.webp",async function(){
     fader.classList.add("fade");
     await new Promise((resolve)=>setTimeout(function(){
@@ -782,10 +844,15 @@ const buildNode=new NodeType("Build-a-Card","Crie uma carta e adicione ao seu de
         letsBuildACard();
         resolve();
     },fadeTimer));
-},()=>0.5);
-const fireNode=new NodeType("Campfire","Aumenta o ataque ou vida de uma carta.","Campfire.webp",function(){
-
-},()=>2);
+},()=>1);
+const fireNode=new NodeType("Campfire","Aumenta o ataque ou vida de uma carta.","Campfire.webp",async function(){
+    fader.classList.add("fade");
+    await new Promise((resolve)=>setTimeout(function(){
+        fader.classList.remove("fade");
+        campfire();
+        resolve();
+    },fadeTimer));
+},()=>99992);
 
 function genItem(n){
     let totalLots=0;
@@ -800,7 +867,7 @@ function genItem(n){
 
 const itemNode=new NodeType("Item","Escolha um de 3 itens.","item.webp",async function(n){
     if(run.items.length>=3){
-        run.deck.push(c_pack_rat);
+        run.deck.push(new ModdedCard(c_pack_rat));
 
         const wRect=mapWrapper.getBoundingClientRect();
         const myRect={top: wRect.top+n.y, left: wRect.left+n.x};
@@ -812,6 +879,7 @@ const itemNode=new NodeType("Item","Escolha um de 3 itens.","item.webp",async fu
                 trans.remove();
                 drawShadow(deckShadows2[0], run.deck.length-shownCards);
                 deckDivs[0].firstElementChild.style.visibility="";
+                toggleShow=true;
             },250);
         },500)),undefined,true);
         
@@ -844,7 +912,7 @@ const itemNode=new NodeType("Item","Escolha um de 3 itens.","item.webp",async fu
             dontBeGreedy=true;
         });
     }
-},()=>4);
+},()=>8);
 
 class MapNode{
     constructor(x,y){
@@ -894,7 +962,7 @@ function pickRandom(lots,totalLots,n){
 }
 
 const mapPaddingX=50,mapPaddingY=50;
-async function renderMap(xSpacing=150,ySpacing=115,len=2,conns=3){
+async function renderMap(len=2,xSpacing=150,ySpacing=115,conns=3){
     const width=3;
     const d=document.createElement("div");
     d.style.position="relative";
@@ -973,15 +1041,8 @@ async function renderMap(xSpacing=150,ySpacing=115,len=2,conns=3){
         lots.push(prob);
     }
     for(let i=1; i<mapNodes.length-1; i++){
-        // const picked=pickRandom(lots,totalLots,3);
-        const picked=[itemNode.id,itemNode.id,itemNode.id];
-        // for(let j=0; j<vis.length; j++){
-        //     const n=mapNodes[i][vis[j]];
-        //     n.type=nodeTypes[picked[j]];
-        //     if(n.type==buildNode){
-        //         n.y+=2;
-        //     }
-        // }
+        const picked=pickRandom(lots,totalLots,3);
+        // const picked=[itemNode.id,itemNode.id,itemNode.id];
         for(let j=0; j<width; j++){
             const n=mapNodes[i][j];
             if(n){
@@ -1024,6 +1085,7 @@ async function renderMap(xSpacing=150,ySpacing=115,len=2,conns=3){
                     if(currNode && currNode.fwd.indexOf(node)!=-1){
                         const old=currNode;
                         currNode=node;
+                        run.fdeck=run.deck.filter((x)=>x.inUse);
                         await node.type.fn(node);
 
                         old.el.classList.remove("currentNode");
@@ -1131,6 +1193,22 @@ function createTransporter(card, nc, myRect, targetRect,el,dur=-1,scale=-1,prom=
     return trans;
 }
 
+function deckViewerEl(dc){
+    const nc=dc.render(2);
+    const ncw=document.createElement("div");
+    ncw.appendChild(nc);
+    const closeBtn=document.createElement("button");
+    closeBtn.className="del";
+    ncw.appendChild(closeBtn);
+    if(!dc.inUse) ncw.classList.add("unused");
+
+    ncw.addEventListener("click",function(){
+        ncw.classList.toggle("unused");
+        dc.inUse=!dc.inUse;
+    });
+    return ncw;
+}
+
 deckDivs[0].addEventListener("click",async function(){
     if(readyProm) return;
     clearInterval(viewerIntv);
@@ -1148,7 +1226,8 @@ deckDivs[0].addEventListener("click",async function(){
             if(shownCards==run.deck.length) return;
 
             const card=copyCanvas(deckDivs[0].firstElementChild);
-            const nc=run.deck[shownCards].render(2);
+            const dc=run.deck[shownCards];
+            const ncw=deckViewerEl(dc);
 
             shownCards++;
             if(shownCards==run.deck.length){
@@ -1164,14 +1243,15 @@ deckDivs[0].addEventListener("click",async function(){
             const placeholder=document.createElement("div");
             placeholder.style.width=card.width+"px";
             placeholder.style.height=card.height+"px";
+            placeholder.className="placeholder";
             deckViewer.appendChild(placeholder);
             const targetRect=placeholder.getBoundingClientRect();
             const myRect=deckDivs[0].firstElementChild.getBoundingClientRect();
 
-            const trans=createTransporter(card,nc,myRect,targetRect,map,200);
+            const trans=createTransporter(card,ncw,myRect,targetRect,map,200);
         
             setTimeout(function(){
-                deckViewer.replaceChild(nc,placeholder);
+                deckViewer.replaceChild(ncw,placeholder);
                 trans.remove();
                 pendingAnims--;
                 if(readyProm && pendingAnims==0){
@@ -1219,6 +1299,29 @@ deckDivs[0].addEventListener("click",async function(){
         },50);
     }
 });
+
+function showMap(){
+    map.style.visibility="visible";
+    deckViewer.style.width=cardWidth*2*Math.max(3,Math.ceil(run.deck.length/3))+"px";
+    hoveredTT=null;
+    tooltip.style.visibility="hidden";
+    tooltip.style.opacity=0;
+
+    if(run.deck.length==0){
+        deckDivs[0].firstElementChild.style.visibility="hidden";
+    }
+    else if(!toggleShow){
+        for(; shownCards<run.deck.length; shownCards++){
+            deckViewer.appendChild(deckViewerEl(run.deck[shownCards]));
+        }
+    }
+    else{
+        if(run.deck.length-shownCards>0){
+            drawShadow(deckShadows2[0], run.deck.length-shownCards);
+            deckDivs[0].firstElementChild.style.visibility="";
+        }
+    }
+}
 
 let trials=[];
 class Trial{
@@ -1328,7 +1431,7 @@ async function playTrial(i){
         const targetRect={top:cardHeight*6+50+chosenRect.top,left:(cardWidth*4+50)*(i-1)+innerWidth/2};
         const trans=createTransporter(cardBack,ch[inds[j]],starterRect,targetRect,cardSelect,300,2,null,"transporter3");
         transes.push(trans);
-        const contrib=trial.reducer(run.deck[inds[j]]);
+        const contrib=trial.reducer(run.fdeck[inds[j]]);
         console.log(contrib);
         acc+=contrib;
         await new Promise((resolve)=>setTimeout(resolve,500));
@@ -1357,7 +1460,7 @@ async function playTrial(i){
         fader.classList.remove("fade");
         arenaDeck.innerHTML="";
         cardSelect.style.visibility="hidden";
-        map.style.visibility="visible";
+        showMap();
     }
     chosenTrans.remove();
     transes.forEach((trans)=>trans.remove());
@@ -1512,9 +1615,12 @@ async function updateOPmeter(){
         else if(chosenCost<=3 && chosenEl==bones){
             correctedEst+=2; 
         }
+        else if(chosenCost<=5 && chosenEl==bones && sigilObjs.indexOf(s_bones)!=-1){
+            correctedEst+=2; 
+        }
     }
 
-    const powerPercent=correctedEst/costToPower[chosenEl][chosenCost];
+    const powerPercent=correctedEst/costToPower[chosenEl][chosenCost]*0.9;
     let meterPercent=powerPercent;
     if(meterPercent>1) meterPercent-=(meterPercent-1)/2;
     let rotation=baseRotate+Math.min(maxRotate,redRotate*meterPercent);
@@ -1649,7 +1755,7 @@ bcBtn.addEventListener("click",async function(){
     let ncCanvas;
     if(success){
         const newCard=new Card();
-        run.deck.push(newCard);
+        run.deck.push(new ModdedCard(newCard));
         newCard.init("Custom",chosenCost,bcAtk,bcHP,elements[chosenEl],sigilObjs,null,[5,16],false,true);
         ncCanvas=newCard.render(4);
         ncCanvas.style.top=rect.top+rect.height/2+"px";
@@ -1661,8 +1767,11 @@ bcBtn.addEventListener("click",async function(){
         ncCanvas.style.transform="";
         await new Promise((resolve)=>setTimeout(resolve,750));
 
-        ncCanvas.style.top=innerHeight+100+rect.height/2+"px";
-        ncCanvas.style.left=innerWidth/2+"px";
+        // ncCanvas.style.top=innerHeight+100+rect.height/2+"px";
+        // ncCanvas.style.left=innerWidth/2+"px";
+        const rect2=arenaDeck.lastElementChild.getBoundingClientRect();
+        ncCanvas.style.top=rect2.top+rect2.height/2+"px";
+        ncCanvas.style.left=rect2.left+rect2.width/2+"px";
         ncCanvas.style.scale="0.5";
         await new Promise((resolve)=>setTimeout(resolve,250));
     }
@@ -1677,7 +1786,7 @@ bcBtn.addEventListener("click",async function(){
     setTimeout(function(){
         bcHolder.style.transform="";
         buildACard.classList.remove("blockAll");
-        map.style.visibility="visible";
+        showMap();
         buildACard.style.visibility="hidden";
         fader.classList.remove("fade");
         bcSigils.innerHTML="";
@@ -1692,6 +1801,7 @@ bcBtn.addEventListener("click",async function(){
     },fadeTimer);
 });
 
+const adcf=document.querySelector("#adcf");
 function letsBuildACard(){
     map.style.visibility="hidden";
     buildACard.style.visibility="visible";
@@ -1707,6 +1817,16 @@ function letsBuildACard(){
     canShake=true;
     updateOPAI();
     updateCost();
+    
+    adcf.appendChild(arenaDeck);
+    calcMargin(arenaDeck,run.fdeck.length,5,1000);
+    arenaDeck.innerHTML="";
+    for(let i=0; i<run.fdeck.length; i++){
+        arenaDeck.appendChild(run.fdeck[i].render(2));
+    }
+    const d=document.createElement("div");
+    d.style.marginLeft="5px";
+    arenaDeck.appendChild(d);
 
     sigilQueue=[];
     shuffle(eligibleSigils,12);
@@ -1740,6 +1860,213 @@ function letsBuildACard(){
             sigilQueue.push({el: c,sigil: eligibleSigils[i]});
             c.classList.add("selectedSig");
             updateSigils();
+        });
+    }
+}
+
+const campfireDiv=document.querySelector("#campfire");
+const campfireImgs=document.querySelectorAll("#cfImgs>img");
+const adcf2=document.querySelector("#adcf2");
+const cfCardDiv=document.querySelector("#cfCard");
+const boostBtn=document.querySelector("#boost");
+const leaveBtn=document.querySelector("#leave");
+const oddsDiv=boostBtn.querySelector(".dice");
+const oddsSpan=boostBtn.querySelector(".dice>span");
+const boneBank=campfireDiv.querySelector("#boneItem");
+const compoundTrans=document.querySelector("#compound");
+const cfScale=parseInt(getComputedStyle(cfCardDiv).getPropertyValue("--scale"));
+let sentToFire=null;
+let stfPos=null;
+let stfCtx=null;
+let burnCount=0;
+let odds=0;
+let animProm=null;
+let blockClicks=false;
+let fireType;
+
+leaveBtn.addEventListener("click",function(){
+    leaveCampfire();
+});
+
+boostBtn.addEventListener("click",function(){
+    if(sentToFire==null || blockClicks) return;
+    burnCount++;
+
+    const roll=run.poisoned? 20: (Math.random()*20)%20+1;
+    if(roll>odds){
+        if(!(run.deck[stfPos] instanceof ModdedCard)){
+            run.deck[stfPos]=new ModdedCard(run.deck[stfPos]);
+        }
+        const c=run.deck[stfPos];
+        if(fireType==0){
+            c.atkBoost++;
+        }
+        else{
+            c.hpBoost+=2;
+        }
+
+        function anim(sentToFire,stfCtx){
+            cfCardDiv.style.transitionDuration="100ms";
+            void cfCardDiv.offsetHeight;
+            cfCardDiv.style.transform="rotateX(30deg)";
+            
+            compoundTrans.style.transform="rotateY(180deg)";
+            let finishFunc;
+            animProm=new Promise((resolve)=>finishFunc=resolve);
+
+            setTimeout(function(){
+                clearStat(stfCtx,cfScale,fireType,c.card,c.card.hasSigil(s_cant_be_sacced));
+                const stat=[c.getAttack(),c.getHealth()][fireType];
+                drawStat(stfCtx,cfScale,fireType,stat,stat);
+                cfCardDiv.innerHTML="";
+                cfCardDiv.appendChild(filled_canvas(cfScale,i_cards,[2,2]));
+            },100);
+
+            setTimeout(function(){
+                compoundTrans.style.transform="rotateY(360deg)";
+                setTimeout(function(){
+                    cfCardDiv.innerHTML="";
+                    cfCardDiv.appendChild(sentToFire);
+                },100);
+                setTimeout(function(){
+                    cfCardDiv.style.transform="";
+                },200);
+                setTimeout(function(){
+                    compoundTrans.style.transition = 'none';
+                    compoundTrans.style.transform="";
+                    compoundTrans.offsetHeight;
+                    compoundTrans.style.transition = '';
+                    finishFunc();
+                },350);
+            },300);
+        }
+        if(animProm) animProm.then(function(){
+            if(sentToFire) anim(sentToFire,stfCtx);
+        });
+        else anim(sentToFire,stfCtx);
+
+        if(odds==0){
+            setOdds(10);
+        }
+        else{
+            leaveCampfire(500);
+        }
+
+        if(shownCards>stfPos){
+            deckViewer.replaceChild(c.render(2),deckViewer.children[stfPos]);
+            shownCards--;
+        }
+    }
+    else{
+        const card=run.deck[stfPos];
+        if(card.getVisibleSigils().contains(s_death_touch)){
+            run.poisoned=true;
+        }
+        run.deck.splice(stfPos,1);
+        if(run.items.length<3) addItem(bonesItem);
+        leaveCampfire(1000);
+
+        if(shownCards>stfPos){
+            deckViewer.children[stfPos].remove();
+            shownCards--;
+        }
+
+        function anim(sentToFire){
+            sentToFire.style.opacity=0;
+            setTimeout(function(){
+                boneBank.style.opacity=1;
+            },250);
+        }
+        if(animProm) animProm.then(function(){
+            if(sentToFire) anim(sentToFire);
+        });
+        else anim(sentToFire);
+    }
+});
+
+async function leaveCampfire(delay=0){
+    blockClicks=true;
+    if(delay>0) await new Promise((resolve)=>setTimeout(resolve,delay))
+    fader.classList.add("fade");
+    setTimeout(function(){
+        fader.classList.remove("fade");
+        campfireDiv.style.visibility="hidden";
+        showMap();
+        sentToFire=null;
+        animProm=null;
+        cfCardDiv.innerHTML="";
+        cfCardDiv.style.transitionDuration="";
+        arenaDeck.innerHTML="";
+    },fadeTimer);
+}
+
+const naughtySigils=[s_extra_attack,s_bifurcated];
+
+function containsAny(arr1, arr2) {
+    return arr1.some(element => arr2.includes(element));
+}
+
+function setOdds(n){
+    odds=n;
+    if(odds>0 && !run.poisoned){
+        oddsDiv.style.display="block";
+        oddsSpan.textContent=odds;
+    }
+    else{
+        oddsDiv.style.display="none";
+    }
+}
+
+function campfire(){
+    map.style.visibility="hidden";
+    campfireDiv.style.visibility="visible";
+    fireType=+(Math.random()<0.5);
+    campfireImgs[fireType].style.display="block";
+    campfireImgs[1-fireType].style.display="none";
+    campfireImgs[2].style.display=run.poisoned? "block": "none";
+    boneBank.style.transition="none";
+    boneBank.style.opacity=0;
+    void boneBank.offsetWidth;
+    boneBank.style.transition="";
+    boostBtn.style.display="none";
+    burnCount=0;
+    sentToFire=null;
+    blockClicks=false;
+    animProm=null;
+
+    adcf2.appendChild(arenaDeck);
+    calcMargin(arenaDeck,run.fdeck.length,5,1000);
+    arenaDeck.innerHTML="";
+    for(let i=0; i<run.fdeck.length; i++){
+        const card=run.fdeck[i];
+        const rendered=card.render(2);
+        arenaDeck.appendChild(rendered);
+        rendered.addEventListener("click",function(){
+            if(burnCount==0){
+                boostBtn.style.display="";
+                const obj=run.fdeck[i].renderAlsoReturnCtx(cfScale);
+                sentToFire=obj.div;
+                stfCtx=obj.ctx;
+                stfPos=run.deck.indexOf(run.fdeck[i]);
+                cfCardDiv.innerHTML="";
+                cfCardDiv.appendChild(sentToFire);
+                
+                cfCardDiv.style.transition="none";
+                cfCardDiv.style.opacity=0;
+                cfCardDiv.style.transform="rotateX(35deg)";
+                void cfCardDiv.offsetHeight;
+                cfCardDiv.style.transition="";
+                cfCardDiv.style.transitionDuration="600ms,300ms";
+                cfCardDiv.style.opacity=1;
+                cfCardDiv.style.transform="";
+
+                if(run.fdeck[i] instanceof ModdedCard || (fireType==0 && containsAny(card.getVisibleSigils(),naughtySigils))){
+                    setOdds(10);
+                }
+                else{
+                    setOdds(0);
+                }
+            }
         });
     }
 }

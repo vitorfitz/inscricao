@@ -9,7 +9,7 @@ body{
     height: 100%;
     align-items: center;
     justify-content: center;
-    overflow-x: hidden;
+    overflow: hidden;
 }
 
 button{
@@ -388,8 +388,8 @@ button{
     position: relative;
 }
 
-#cards_in_deck .del{
-    z-index: 1;
+.del{
+    z-index: 3;
     position: absolute;
     width: 18px;
     height: 18px;
@@ -398,7 +398,6 @@ button{
     border:1px solid black;
     top:-9px;
     right:-9px;
-    z-index: 2;
     font-size:20px;
     color:white;
     display: flex;
@@ -408,14 +407,15 @@ button{
     visibility: hidden;
     opacity: 0;
     transition: opacity 150ms linear;
+    font-family: sans-serif;
 }
 
-#cards_in_deck :hover>.del{
+:hover>.del{
     visibility: visible;
     opacity: 1;
 }
 
-#cards_in_deck .del::before{
+.del::before{
     content: "×";
 }
 
@@ -1236,7 +1236,7 @@ canvas{
 .hand .ghostCard:last-child{
     margin-right: 0;
 }
-.selected{
+#game .selected{
     translate:0 -15px;
 }
 

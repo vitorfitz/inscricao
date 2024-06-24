@@ -190,9 +190,9 @@ let drawProm=null;
 const maxHandWidth=600;
 const defaultMargin=5;
 
-function calcMargin(hand,cards){
-    if(cards==0) return defaultMargin;
-    let m=Math.min(defaultMargin,(maxHandWidth-cardWidth*2*(cards+1))/(cards));
+function calcMargin(hand,cards,def=defaultMargin,max=maxHandWidth,scale=2){
+    if(cards==0) return def;
+    let m=Math.min(def,(max-cardWidth*scale*(cards+1))/(cards));
     hand.style.setProperty("--margin",m+"px");
     return m;
 }
@@ -805,7 +805,7 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
             const handIndex=game.hand.indexOf(selectedCard);
 
             let prefix="";
-            if(played.mods && played.mods.extraSigs){
+            if(played.mods && played.mods.extraSigs.length>0){
                 prefix+=codePlayedModded;
                 for(let s of played.mods.extraSigs){
                     prefix+=" "+s.id;
@@ -1810,7 +1810,7 @@ function calcFilters(){
                 switch(selectedCosts[1]){
                     case 2: cond=cards[i].cost==targetCost; break;
                     case 1: cond=cards[i].cost<=targetCost; break;
-                    default:  cond=cards[i].cost>=targetCost;
+                    default: cond=cards[i].cost>=targetCost;
                 }
                 if(cond && matchesSigils(cards[i])){
                     filteredCards.push(cards[i]);

@@ -274,7 +274,7 @@
                     <div class="cardSpace"></div>
                 </div>
             </div>
-            <div id="arena_deck"></div>
+            <div id="arena_deck_cc"></div>
             <div id="mopup"></div>
         </div>
         <div id="map">
@@ -328,35 +328,60 @@
             </div>
         </div>
         <div id="cardFactory">
-            <div id="cfStuff">
-                <div>
-                    <div id="cardHolder">
-                        <div>
-                            <canvas></canvas>
-                            <input type="number" min="0" max="14" step="1" value="0" id="attack">
-                            <input type="number" min="1" max="25" step="1" value="1" id="health" dir="rtl">
-                            <div id="cost">
-                                <canvas></canvas>
-                            </div>
-                        </div>
-                        <img id="splosh" src="map/splosh.png" width="160">
-                        <div id="controls">
-                            <span id="plus" style="line-height:9px; font-size: 18px; position:relative; z-index:1;"><span>++</span></span>
-                            <span id="minus" style="padding-bottom: 4px; line-height:5px; letter-spacing: 1px;"><span>  --</span></span>
-                            <img id="switch" src="icons/circle-arrow.svg" width="16" style="filter:invert(87%)">
-                        </div>
-                    </div>
-                    <div id="cardConfigs">
-                        <div id="sigilPick"></div>
-                        <div id="opmeter">
+            <div>
+                <div id="cfStuff">
+                    <div>
+                        <div id="cardHolder">
                             <div>
-                                <canvas width="71" height="71"></canvas>
+                                <canvas></canvas>
+                                <input type="number" min="0" max="14" step="1" value="0" id="attack">
+                                <input type="number" min="1" max="25" step="1" value="1" id="health" dir="rtl">
+                                <div id="cost">
+                                    <canvas></canvas>
+                                </div>
+                            </div>
+                            <img id="splosh" src="map/splosh.png" width="160">
+                            <div id="controls">
+                                <span id="plus" style="line-height:9px; font-size: 18px; position:relative; z-index:1;"><span>++</span></span>
+                                <span id="minus" style="padding-bottom: 4px; line-height:5px; letter-spacing: 1px;"><span>  --</span></span>
+                                <img id="switch" src="icons/circle-arrow.svg" width="16" style="filter:invert(87%)">
+                            </div>
+                        </div>
+                        <div id="cardConfigs">
+                            <div id="sigilPick"></div>
+                            <div id="opmeter">
+                                <div>
+                                    <canvas width="71" height="71"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <button id="create">Criar</button>
                 </div>
-                <button id="create">Criar</button>
             </div>
+            <div id="adcf"></div>
+        </div>
+        <div id="campfire">
+            <div id="cfImgs">
+                <img src="map/campfire_attack.jpg" id="camp_atk">
+                <img src="map/campfire_health.jpg" id="camp_hp">
+                <img src="map/lazy.png" id="xxxxx">
+                <div id="compound"><div id="cfCard"></div></div>
+                <div id="boneItem"><img src="items/bones.webp"></div>
+                <div id="btns">
+                    <button id="leave">
+                        <img src="icons/door.svg">
+                    </button>
+                    <button id="boost">
+                        <span>+</span>
+                        <div class="dice">
+                            <img src="icons/dice.png">
+                            <span>10</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+            <div id="adcf2"></div>
         </div>
         <div id="tooltip"></div>
         <div id="fade" class="fader"></div>

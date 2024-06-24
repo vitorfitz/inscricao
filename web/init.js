@@ -2,7 +2,7 @@
 
 const allSigils=[];
 class Sigil{
-    init(coords=null,name=null,desc=null,initData=function(card,sigil){}){
+    init(coords=null,name=null,desc=null,initData=function(card,sigil){},hidden=false){
         this.name=name;
         this.desc=desc;
         this.coords=coords;
@@ -24,7 +24,7 @@ class Sigil{
 
         this.initData=initData;
         
-        if(coords!=null){
+        if(coords!=null && !hidden){
             const hash=coords[0]*100+coords[1];
             if(!coordsSet.has(hash)){
                 coordsSet.add(hash);

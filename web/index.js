@@ -192,10 +192,11 @@ class Listener{
 }
 
 class GameSigil{
-    constructor(sigil){
+    constructor(sigil,totem=false){
         this.funcs=sigil;
         this.data=null;
         this.el=null;
+        this.totem=totem;
     }
 }
 class GameActivated extends GameSigil{
@@ -209,16 +210,14 @@ const sigilCoords=[];
 const coordsSet=new Set();
 function initDirection(card,gs){
     const old=game.board[card.side][card.pos];
-    let direction;
+    let direction=1-2*card.side;
     if(old!=null){
         for(let s of old.sigils){
             if(s.funcs.initData==initDirection){
                 direction=s.data.direction;
+                break;
             }
         }
-    }
-    else{
-        direction=1-2*card.side;
     }
 
     gs.el.style.transition="transform 200ms linear";
@@ -677,7 +676,7 @@ s_mirror.onTurnEnded.push(new Listener(listen_any,async function(me){
     updateMirror(me);
 },-1));
 
-s_packin.init([4,8],"Trinket Bearer","Ganhe um item aleatório.");
+s_packin.init([4,8],"Trinket Bearer","Ganhe um item aleatório.",undefined,true);
 s_packin.onCardPlayed.push(new Listener(listen_me,async function(me){
     if(game.turn!=game.myTurn || (run.items.length>2 && run.usedItems.length==0)) return;
 
@@ -851,10 +850,10 @@ class GameCard{
         return false;
     }
 
-    static fromCard(c,unsac=false,attack=c.getAttack(),health=c.getHealth()){
+    static fromCard(c,unsac=false,attack=c.getAttack(),health=c.getHealth(),ba=attack,bh=health){
         let mods=null;
         if(c instanceof ModdedCard){
-            mods=c;
+            if(c.atkBoost!=0 || c.hpBoost!=0 || c.extraSigs.length>0) mods=c;
             c=c.card;
         }
 
@@ -868,8 +867,8 @@ class GameCard{
             card:c,
             attack,
             health,
-            baseAttack:attack,
-            baseHealth:health,
+            baseAttack:ba,
+            baseHealth:bh,
             unsaccable:unsac || c.hasSigil(s_cant_be_sacced),
             sigils: sigils,
             activated: activated
@@ -890,10 +889,12 @@ class GameCard{
         })
     }
 
-    static toSocketLen=4;
+    static toSocketLen=6;
     toSocket(){
         return[
             this.card.jsonID,
+            this.attack,
+            this.health,
             this.baseAttack,
             this.baseHealth,
             +this.unsaccable,
@@ -918,8 +919,6 @@ class GameCard{
         this.mods=mods;
 
         if(mods){
-            this.attack+=mods.atkBoost;
-            this.health+=mods.hpBoost;
             for(let i=0; i<mods.extraSigs.length; i++){
                 this.sigils.push(new GameSigil(mods.extraSigs[i]));
             }
@@ -929,6 +928,7 @@ class GameCard{
         this.canvas=ret.div;
         this.ctx=ret.ctx;
         this.sigilEls=ret.sigilEls;
+        this.totemEls=[];
         if(this.unsaccable) this.canvas.classList.add("unsaccable");
 
         if(mods){
@@ -1059,6 +1059,9 @@ class GameCard{
             for(let s of this.sigils){
                 s.data=s.funcs.initData(this,s);
             }
+            for(let i=0; i<game.totemEffects[this.side].length; i++){
+                applyTotem(this,i);
+            }
             prevBuff=0;
         }
         else{
@@ -1107,21 +1110,25 @@ class GameCard{
 
         if(old_pos==null){
             for(let s of this.sigils){
-                for(let i=0; i<listenerRefs.length; i++){
-                    const listeners=s.funcs[listenerFuncs[i]];
-                    const pool=game[listenerRefs[i]];
-
-                    for(let lis of listeners){
-                        const obj={func: lis.func, caller: this, data: s.data, prio: lis.prio};
-                        if([listen_ally,listen_any].includes(lis.type)) pool[this.side].push(obj);
-                        if([listen_enemy,listen_any].includes(lis.type)) pool[1-this.side].push(obj);
-                    }
-                }
+                this.addListener(s);
             }
         }
 
         this.inGame=true;
         //console.log(">PLACING "+this.debugInfo());
+    }
+
+    addListener(s,totem=null){
+        for(let i=0; i<listenerRefs.length; i++){
+            const listeners=s.funcs[listenerFuncs[i]];
+            const pool=game[listenerRefs[i]];
+
+            for(let lis of listeners){
+                const obj={func: lis.func, caller: this, data: s.data, prio: lis.prio, totem: totem};
+                if([listen_ally,listen_any].includes(lis.type)) pool[this.side].push(obj);
+                if([listen_enemy,listen_any].includes(lis.type)) pool[1-this.side].push(obj);
+            }
+        }
     }
 
     async hit(opp){
@@ -1252,7 +1259,7 @@ class Game{
         }
     }
 
-    freshStart(deck,oppCardsLeft=minCards,startCards=3,startMana=1){
+    freshStart(deck,oppCardsLeft=minCards,nm=numManas,startCards=3,startMana=1){
         this.turn=0;
         this.deck=deck.slice(0);
         shuffle(this.deck);
@@ -1264,6 +1271,7 @@ class Game{
         this.scales=0;
         this.startCards=startCards;
         this.startMana=startMana;
+        this.totemEffects=[[],[]];
 
         this.energize();
         this.hand=[];
@@ -1271,10 +1279,11 @@ class Game{
 
         const startDelay=1000,cardDelay=600;
         let that=this;
+        const myLen=this.deck.length,oppLen=this.oppCardsLeft
         for(let i=0; i<startCards; i++){
             this.timeout(function(){
-                that.drawCard(0,0);
-                that.drawCard(0,1);
+                if(i<myLen) that.drawCard(0,that.myTurn);
+                if(i<oppLen) that.drawCard(0,1-that.myTurn);
             },startDelay+i*cardDelay);
         }
         for(let i=0; i<startMana; i++){
@@ -1409,12 +1418,13 @@ class Game{
                 }
                 run.usedItems=[];
 
-                map.style.visibility="visible";
+                showMap();
                 updateHPs();
                 updateDeck(1);
                 updateItemDivs();
                 mapWrapper.innerHTML="";
-                const mCanvas=await renderMap();
+                // const mCanvas=await renderMap();
+                const mCanvas=await renderMap(run.getMapLen());
                 mapWrapper.appendChild(mCanvas);
                 fader.style.animationDuration=fadeTimer+"ms";
             }
@@ -1620,11 +1630,13 @@ class Game{
     async resolve(isTurnEnd=false){
         await this.resolveDamage();
         this.updateControls(isTurnEnd);
-
+        this.sortListeners();
         // console.table([this.board[0].map((x)=>x?.card.name),this.board[1].map((x)=>x?.card.name)]);
+    }
 
+    sortListeners(){
         for(let i=0; i<listenerRefs.length; i++){
-            const pools=game[listenerRefs[i]];
+            const pools=this[listenerRefs[i]];
 
             for(let side=0; side<pools.length; side++){
                 const pool=pools[side];
@@ -1768,9 +1780,55 @@ class Game{
         }
         if(run) game.checkScales();
 
+        for(let ref of listenerRefs){
+            for(let i=0; i<2; i++){
+                let l2=[];
+                for(let l of game[ref][i]){
+                    if(l.totem!=1-this.turn){
+                        l2.push(l);
+                    }
+                }
+                game[ref][i]=l2;
+            }
+        }
+        for(let i=0; i<game.lanes; i++){
+            const c=game.board[1-this.turn][i];
+            if(c!=null){
+                const discards=c.sigils.filter((x)=>x.totem);
+                c.sigils=c.sigils.filter((x)=>!x.totem);
+
+                for(let el of c.totemEls){
+                    const ind=c.sigilEls.indexOf(el);
+                    if(ind==-1) continue;
+                    el.style.opacity=0;
+                    setTimeout(function(){
+                        el.remove();
+                    },300);
+                    if(hoveredTT==el){
+                        hoveredTT=null;
+                        hoveredTT.style.opacity=0;
+                        hoveredTT.style.visibility="hidden";
+                    }
+                    c.sigilEls.splice(ind,1);
+                }
+
+                const target=c.pos;
+                c.pos=null;
+                for(let s of discards){
+                    for(let q of s.funcs.onCardMoved){
+                        if(q.type==listen_me) await q.func(c,target,c,s.data);
+                    }
+                }
+                c.pos=target;
+                c.totemEls=[];
+            }
+        }
+        game.totemEffects[1-this.turn]=[];
+
         for(let l of [...game.turnEndListeners[this.turn]]){
             await l.func(l.caller,l.data);
         }
+
         await game.resolve(true);
 
         this.turn=1-this.turn;
@@ -1864,7 +1922,7 @@ class Game{
                         await this.sleep(200);
                     }
 
-                    let pos=parseInt(spl[0]),handPos=parseInt(spl[1]),id=parseInt(spl[2]),attack=parseInt(spl[3]),health=parseInt(spl[4]),unsac=parseInt(spl[5]);
+                    let pos=parseInt(spl[0]),handPos=parseInt(spl[1]),id=parseInt(spl[2]),attack=parseInt(spl[3]),health=parseInt(spl[4]),ba=parseInt(spl[5]),bh=parseInt(spl[6]),unsac=parseInt(spl[7]);
 
                     let faceDown;
                     out: while(true){
@@ -1907,7 +1965,7 @@ class Game{
                         }
                     }
 
-                    const c=GameCard.fromCard(card,unsac==1,attack,health);
+                    const c=GameCard.fromCard(card,unsac==1,attack,health,ba,bh);
                     if(id!=-1 && attack!=allCards[id].attack){
                         c.updateStat(0,attack);
                     }

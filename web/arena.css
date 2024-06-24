@@ -34,8 +34,11 @@
     height:112px;
     box-sizing: border-box;
 }
-#arena_deck>:not(:last-child){
-    margin-right: 5px;
+#arena_deck>:hover{
+    z-index: 3;
+}
+#arena_deck>:not(:first-child){
+    margin-left: var(--margin);
 }
 #arena_deck>:empty{
     display: flex;
@@ -55,6 +58,7 @@
 #pick3{
     display: flex;
     position: relative;
+    justify-content: center;
 }
 #pick3>.cardSpace:not(:last-of-type){
     margin-right: 60px;
@@ -62,6 +66,7 @@
 #pick3>.cardSpace{
     width: 168px;
     height: 224px;
+    display: flex;
 }
 #pick3>.cardSpace>*>canvas{
     cursor: pointer;
@@ -295,7 +300,38 @@
 }
 #spreadDeck>*{
     margin-bottom: 10px;
-    z-index: inherit;
+    position: relative;
+    cursor: pointer;
+}
+#spreadDeck>:not(.placeholder){
+    box-shadow: 0 0 10px 0 rgba(0,0,0,0.5);
+}
+#spreadDeck .del{
+    /* top:-10px;
+    right:-10px; */
+    width: 22px;
+    height: 22px;
+    font-size: 25px;
+}
+.unused::before{
+    content: "";
+    top: 0;
+    left:0;
+    right: 0;
+    bottom: 0;
+    position: absolute;
+    background-color: rgba(63,63,63,0.65);
+    z-index: 1;
+    pointer-events: none;
+}
+.unused .del{
+    background-color: #007f00;
+}
+.unused .del::before{
+    content: "✔";
+    position: relative;
+    font-size: 16px;
+    top: -1px;
 }
 
 #map .transporter{
@@ -378,6 +414,136 @@
     }
 }
 
+#campfire{
+    position: absolute;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    visibility: hidden;
+    font-family: sans-serif;
+    background-color: #000002;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+#cfImgs{
+    margin-bottom: 170px;
+    position: relative;
+}
+#cfImgs>img{
+    width: 1200px;
+}
+#xxxxx{
+    position: absolute;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+}
+#adcf2{
+    position: absolute;
+    bottom: 0;
+    left:0;
+    right:0;
+}
+#adcf2>*{
+    cursor: pointer;
+}
+#cfCard{
+    --scale:3;
+    width: calc(42px * var(--scale));
+    height: calc(56px * var(--scale));
+    position: relative;
+    transform: rotateX(47deg);
+    transition: opacity 150ms linear, transform 200ms linear;
+}
+#compound{
+    position: absolute;
+    left:50%;
+    top:438px;
+    translate: -50% -50%;
+    transition: transform 200ms linear;
+    perspective: 430px;
+    perspective-origin: 50% 100%;
+}
+#boneItem{
+    position: absolute;
+    left:50%;
+    top:438px;
+    translate: -50% -50%;
+    transition: opacity 250ms linear;
+    opacity: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    box-shadow: 0px 0px 40px 40px rgba(0, 0, 0, 0.75);
+}
+#boneItem>img{
+    height: 75px;
+    width: 50px !important;
+    margin:-20px;
+}
+#cfCard>*{
+    transition: opacity 500ms linear;
+}
+
+#btns{
+    position: absolute;
+    left:50%;
+    top:520px;
+    translate: -50% 0;
+    display: flex;
+    align-items: stretch;
+    height: 70px;
+    z-index: 1;
+    --filter:brightness(0) saturate(100%) invert(86%) sepia(14%) saturate(1176%) hue-rotate(350deg) brightness(97%) contrast(95%);
+}
+#leave{
+    padding-left: 10px;
+    padding-right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20px;
+    background-color: rgba(127,0,0,0.5);
+}
+#leave>img{
+    height: 40px;
+    filter: var(--filter);
+    opacity: 0.5;
+}
+#boost{
+    border-radius: 20px;
+    background-color: rgba(127,0,0,0.5);
+    font-size: 60px;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    display: flex;
+    margin-left:20px;
+    color: #996742;
+    min-width: 60px;
+}
+#boost .dice{
+    margin-left: 15px;
+}
+.dice{
+    position: relative;
+}
+.dice>img{
+    height: 60px;
+    filter: var(--filter);
+    opacity: 0.5;
+}
+.dice>span{
+    position: absolute;
+    top:50%;
+    left:50%;
+    translate: -50% -50%;
+    font-size: 15px;
+    font-weight: bold;
+    color: #d9a986;
+}
+
 #cardFactory{
     position: absolute;
     top:0;
@@ -387,6 +553,7 @@
     background-image: url("map/bg.png");
     background-size: cover;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     visibility: hidden;
@@ -397,10 +564,16 @@
     font-family: sans-serif;
 }
 
+#cardFactory>:first-child{
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 #cfStuff{
     position: relative;
 }
-#cfStuff>div{
+#cfStuff>:first-child{
     transition: translate 65ms linear;
     display: flex;
     border-radius: 30px;
@@ -550,7 +723,7 @@
     transition-duration: 400ms,400ms,400ms,150ms;
     transition-timing-function: linear,linear,ease-out,linear;
     translate: -50% -50%;
-    z-index: 1;
+    z-index: 3;
     pointer-events: none;
 }
 
@@ -640,4 +813,12 @@
 }
 .selectable.items>*>:hover, .shakeAndFade{
     filter: saturate(250%);
+}
+
+.fromTotem{
+    filter: brightness(0) saturate(100%) invert(9%) sepia(100%) saturate(6233%) hue-rotate(6deg) brightness(82%) contrast(112%);
+    top:28px;
+    right:2px;
+    opacity: 1;
+    transition: opacity 300ms linear;
 }

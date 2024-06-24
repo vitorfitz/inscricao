@@ -42,6 +42,60 @@ const bonesItem=new Item("Hoggy Bank","Ganhe 2 ossos.","bones.webp",()=>0.25,asy
     updateBones(game.turn);
 });
 
+function applyTotem(c,ind){
+    const sig=game.totemEffects[c.side][ind];
+    if(sig==s_undying && c.card.cost==0) return null;
+    const gs=new GameSigil(sig,true);
+
+    const el=sigilElement(sig);
+    el.width=i_sigils.dims[0]*2;
+    el.height=i_sigils.dims[1]*2;
+    el.style.translate="0px "+(c.totemEls.length)*34+"px";
+    el.classList.add("fromTotem");
+    i_sigils.draw(el.getContext("2d"),2,...sig.coords,0,0);
+    c.sigilEls.push(el);
+    c.totemEls.push(el);
+    gs.el=el;
+    c.canvas.appendChild(el);
+    el.style.opacity=0;
+    void el.offsetHeight;
+    el.style.opacity=1;
+    if(sig.initData) gs.data=sig.initData(c,gs);
+    c.sigils.push(gs);
+    c.addListener(gs,c.side);
+    return gs;
+}
+
+function makeTotem(sig,img,lotFn){
+    return new Item("Instant Totem","Dê "+sig.name+" às suas cartas"+(sig==s_undying? " QUE CUSTAM MAIS DE 0": "")+" por 1 turno.",img,lotFn,async function(i){
+        game.totemEffects[game.turn].push(sig);
+        await consumeItem(i);
+
+        for(let i=0; i<game.lanes; i++){
+            const c=game.board[game.turn][i];
+            if(c!=null){
+                let gs=applyTotem(c,game.totemEffects[game.turn].length-1);
+                if(gs){
+                    for(let f of sig.onCardMoved){
+                        if(f.type==listen_me){
+                            await f.func(c,null,c,gs.data);
+                        }
+                    }
+                }
+            }
+        }
+        game.sortListeners();
+    });
+}
+
+const totemItems=[
+    makeTotem(s_quills,"spike_totem.webp",()=>0.25),
+    makeTotem(s_stinky,"stink_totem.webp",()=>0.25),
+    makeTotem(s_sq_spawner,"sq_totem.webp",()=>0.25),
+    makeTotem(s_undying,"totem_of_undying.webp",()=>0.25),
+    makeTotem(s_burrow,"burrow_totem.webp",()=>0.25),
+]
+
 function maintainOppItems(search=run.revealedItems){
     let ind;
 
