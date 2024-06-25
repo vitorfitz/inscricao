@@ -648,7 +648,7 @@ class PowerEstimate{
             res+=5*(0.95**excessHP-1)/(0.95-1);
         }
 
-        if(this.offense>3) res+=(this.offense-3)**2/10;
+        if(this.offense>5) res+=(this.offense-5)**2.2/10;
         res+=this.additive;
         res+=this.defense*(this.presence);
         if(res<3) res+=(3-res)/2;
