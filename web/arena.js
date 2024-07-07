@@ -118,8 +118,8 @@ function newRun(otherJSON,configs){
     updateHPs();
     updateDeck(1);
     updateItemDivs();
-    cardPick(1,10,buffedCards);
-    // cardPick(10,0,randomCards);
+    // cardPick(10,3,buffedCards);
+    cardPick(10,0,randomCards);
     fader.style.animationDuration=fadeTimer+"ms";
 }
 
@@ -1954,12 +1954,11 @@ boostBtn.addEventListener("click",function(){
 
         if(shownCards>stfPos){
             deckViewer.replaceChild(c.render(2),deckViewer.children[stfPos]);
-            shownCards--;
         }
     }
     else{
         const card=run.deck[stfPos];
-        if(card.getVisibleSigils().contains(s_death_touch)){
+        if(card.getVisibleSigils().indexOf(s_death_touch)!=-1){
             run.poisoned=true;
         }
         run.deck.splice(stfPos,1);
@@ -2060,7 +2059,7 @@ function campfire(){
                 cfCardDiv.style.opacity=1;
                 cfCardDiv.style.transform="";
 
-                if(run.fdeck[i] instanceof ModdedCard || (fireType==0 && containsAny(card.getVisibleSigils(),naughtySigils))){
+                if((run.fdeck[i] instanceof ModdedCard && (run.fdeck[i].atkBoost>0 || run.fdeck[i].hpBoost>0)) || (fireType==0 && containsAny(card.getVisibleSigils(),naughtySigils))){
                     setOdds(10);
                 }
                 else{

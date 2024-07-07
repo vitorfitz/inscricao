@@ -223,11 +223,6 @@ async function cardDrawStage2(card,pl,justPlayed=false){
     card.style.top="0";
 
     setTimeout(function(){
-        if(game.overBool){
-            card.remove();
-            return;
-        }
-
         card.classList.remove("adding");
         setTimeout(function(){
             card.classList.remove("suppressEvents");
@@ -242,6 +237,13 @@ async function cardDrawStage2(card,pl,justPlayed=false){
                 if(el) el.style.transition="";
             },100)
         }
+
+        if(game.overBool){
+            isDrawing[pl]=false;
+            cds2qs[pl].clear();
+            return;
+        }
+
         if(drawProm) drawProm();
         setTimeout(function(){
             isDrawing[pl]=false;
