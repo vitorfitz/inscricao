@@ -495,7 +495,7 @@ s_sniper.init([6,6],"Sniper","Você escolhe onde essa carta ataca.");
 s_sniper.modifyTargets=async function(me){
     if(game.targets.length>0){
         if(me.side!=game.myTurn){
-            let msg=await Promise.any([getNextMsg(),game.over]);
+            let msg=await Promise.any([getNextMsg(),game.abort]);
             if(game.overBool) return;
 
             let targetsStr=msg.substring(2);
@@ -638,15 +638,15 @@ s_hand.init([0,0],null,"Número de cartas na sua mão.");
 s_hand.onCardPlayed.push(new Listener(listen_me,async function(me){
     me.attack=me.side==game.myTurn? game.hand.length: game.oppCards;
     me.updateStat(0,me.attack);
-}));
+},1));
 s_hand.onCardDrawn.push(new Listener(listen_ally,async function(me){
-    me.attack++;
+    me.attack=me.side==game.myTurn? game.hand.length: game.oppCards;
     me.updateStat(0,me.attack);
-}));
+},1));
 s_hand.onCardPlayed.push(new Listener(listen_ally,async function(me){
-    me.attack--;
+    me.attack=me.side==game.myTurn? game.hand.length: game.oppCards;
     me.updateStat(0,me.attack);
-}));
+},1));
 
 s_mirror.init([1,0],null,"Copia o ataque da carta à frente desta.");
 function updateMirror(me){
@@ -664,17 +664,17 @@ s_mirror.onCardMoved.push(new Listener(listen_me,async function(me){
 }));
 s_mirror.onCardMoved.push(new Listener(listen_enemy,async function(me){
     updateMirror(me);
-},-1));
+},1));
 s_mirror.onCardDied.push(new Listener(listen_enemy,async function(me,dead){
     if(dead.pos==me.pos){
         const old=me.attack;
         me.attack=0;
         if(old!=0) me.updateStat(0,me.attack);
     }else updateMirror(me);
-},-1));
+},1));
 s_mirror.onTurnEnded.push(new Listener(listen_any,async function(me){
     updateMirror(me);
-},-1));
+},1));
 
 s_packin.init([4,8],"Trinket Bearer","Ganhe um item aleatório.",undefined,true);
 s_packin.onCardPlayed.push(new Listener(listen_me,async function(me){
@@ -1240,6 +1240,9 @@ class Game{
         this.over=new Promise((resolve)=>{
             that.overProm=resolve;
         });
+        this.abort=new Promise((resolve)=>{
+            this.abortProm=resolve;
+        });
         this.overBool=false;
         this.timeouts=new Set();
 
@@ -1362,6 +1365,7 @@ class Game{
     itsOver(){
         if(this.overBool) return;
         this.overBool=true;
+        this.abortProm();
         unselectCard();
         cancelHammer();
         isSaccing=true;
@@ -1677,14 +1681,14 @@ class Game{
         if(side==this.myTurn){
             c=GameCard.fromCard(card,unsac);
         }
-        for(let l of [...game.drawListeners[this.turn]]){
-            await l.func(l.caller,c,l.data);
-        }
 
         if(side==this.myTurn){
             this.hand.push(c);
             if(func){
                 func(c);
+            }
+            for(let l of [...game.drawListeners[this.turn]]){
+                await l.func(l.caller,c,l.data);
             }
             canvas=c.canvas;
 
@@ -1711,6 +1715,9 @@ class Game{
         }
         else{
             this.oppCards++;
+            for(let l of [...game.drawListeners[this.turn]]){
+                await l.func(l.caller,c,l.data);
+            }
             if(justPlayed==null) return c;
             canvas=copyCanvas(deckPiles[1][0]);
         }
@@ -1728,7 +1735,7 @@ class Game{
             }
             else{
                 card=this.deck.pop();
-                // card=c_pack_rat;
+                // card=c_sniper;
                 cardsLeft=this.deck.length;
             }
         }

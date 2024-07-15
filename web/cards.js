@@ -8,7 +8,7 @@ c_bolthound.init("Bolthound",5,2,3,energy,[s_guardian],null,[0,1]);
 c_explode_bot.init("Explode Bot",4,1,1,energy,[s_explosive],null,[1,1]);
 c_mrs_bomb.init("Mrs. Bomb",5,1,2,energy,[s_bomb],null,[2,1]);
 c_bonehound.init("Bonehound",4,2,4,bones,[s_guardian],null,[3,1]);
-c_bullfrog.init("Bullfrog",1,1,3,blood,[s_reach],null,[6,1]);
+c_bullfrog.init("Bullfrog",1,1,4,blood,[s_reach],null,[6,1]);
 c_sniper.init("Sniper Bot",3,1,1,energy,[s_sniper],null,[8,1]);
 c_cat.init("Cat",1,0,1,blood,[s_free_sac],null,[0,2]);
 c_coyote.init("Coyote",2,1,4,bones,[],null,[0,3]);
@@ -32,7 +32,6 @@ c_squirrel_ball.init("Squirrel Ball",1,1,1,blood,[s_sq_spawner],null,[8,6]);
 c_l33pbot.init("L33pbot",1,0,2,energy,[s_reach],null,[0,7]);
 c_magpie.init("Magpie",2,1,1,blood,[s_flying,s_tutor],null,[2,7]);
 // mantis god
-// meat bot
 c_49er.init("49er",2,1,1,energy,[s_sidestep],null,[2,8]);
 c_mole.init("Mole",1,0,4,blood,[s_burrow],null,[3,8]);
 c_mole_man.init("Mole Man",1,0,4,blood,[s_burrow,s_reach],null,[4,8]);
@@ -69,7 +68,7 @@ c_raven_egg.init("Raven Egg",1,0,3,blood,[s_raven_egg],null,[3,14]);
 c_alpha.init("Alpha",4,1,3,bones,[s_alpha],null,[4,14]);
 c_mantis.init("Mantis",1,1,1,blood,[s_bifurcated],null,[5,14]);
 c_moose_buck.init("Moose Buck",3,3,7,blood,[s_push],null,[6,14]);
-c_skunk.init("Skunk",1,0,3,blood,[s_stinky],null,[7,14]);
+c_skunk.init("Skunk",1,0,4,blood,[s_stinky],null,[7,14]);
 c_great_white.init("Great White",3,4,2,blood,[s_aquatic],null,[8,14]);
 c_porcupine.init("Porcupine",1,1,2,blood,[s_quills],null,[0,15]);
 // pronghorn
@@ -82,7 +81,10 @@ c_bone_horn.init("Bone Lord's Horn",6,1,1,bones,[],a_bone_horn,[4,1]);
 c_tomb_raider.init("Tomb Robber",1,0,2,bones,[],a_disentomb,[0,12]);
 c_plasma.init("Plasma Jimmy",2,0,2,energy,[],a_energy_gun,[0,4]);
 c_bone_heap.init("Bone Heap",1,0,2,bones,[],a_enlarge,[5,1]);
-c_hand_tent.init("Hand Tentacle",2,0,3,blood,[s_hand],null,[8,3]);
+c_hand_tent.init("Hand Tentacle",2,0,4,blood,[s_hand],null,[8,3]);
 c_mirror_tent.init("Mirror Tentacle",1,0,4,blood,[s_mirror],null,[8,4]);
+
+c_m3atb0t.init("M3atb0t",5,0,1,energy,[s_worthy],null,[0,8]);
+
 c_rock.init("Boulder",0,0,3,bones,[s_cant_be_sacced],null,[6,16],false);
 c_pack_rat.init("Pack Rat",2,2,3,blood,[s_packin],null,[7,16],false);

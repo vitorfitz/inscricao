@@ -223,6 +223,14 @@ async function cardDrawStage2(card,pl,justPlayed=false){
     card.style.top="0";
 
     setTimeout(function(){
+        if(game.overBool){
+            isDrawing[pl]=false;
+            cds2qs[pl].clear();
+            isDrawing[1-pl]=false;
+            cds2qs[1-pl].clear();
+            return;
+        }
+
         card.classList.remove("adding");
         setTimeout(function(){
             card.classList.remove("suppressEvents");
@@ -236,12 +244,6 @@ async function cardDrawStage2(card,pl,justPlayed=false){
             setTimeout(function(){
                 if(el) el.style.transition="";
             },100)
-        }
-
-        if(game.overBool){
-            isDrawing[pl]=false;
-            cds2qs[pl].clear();
-            return;
         }
 
         if(drawProm) drawProm();
@@ -1094,6 +1096,9 @@ for(let i of allInputs){
         whenChanged();
     });
 }
+select.addEventListener("input",function(){
+    whenChanged();
+});
 
 let isPlayClicked=false;
 playBtn.addEventListener("click",async function(){

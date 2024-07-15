@@ -480,6 +480,7 @@ const c_tomb_raider=new Card();
 const c_plasma=new Card();
 const c_bone_heap=new Card();
 const c_mirror_tent=new Card();
+const c_m3atb0t=new Card();
 const c_hand_tent=new Card();
 const c_rock=new Card();
 const c_pack_rat=new Card();

@@ -448,8 +448,9 @@ let sigilEstimates={};
             if(!has(pe,s_aquatic)) pe.additive+=((0.5+pe.defense)*(0.5+pe.offense))*0.08;
         }
     }};
-    se[s_extra_attack.id]={uselessAt0: true,mod:(pe)=>{
+    se[s_extra_attack.id]={uselessAt0: true,ea:(pe)=>{
         if(has(pe,s_flying)) pe.offense*=2.06;
+        else if(has(pe,s_death_touch)) pe.offense+=pe.offense/pe.dt*1.13;
         else pe.offense*=2.2;
     }};
     se[s_death_touch.id]={uselessAt0: true,mod:(pe)=>{
@@ -459,7 +460,6 @@ let sigilEstimates={};
         };
         if(has(pe,s_flying)) pe.dt=1+0.1/(pe.attack*(pe.attack+1)/2);
         else if(has(pe,s_bifurcated)) pe.dt=1+1.5/(pe.attack*(pe.attack+1)/2);
-        else if(has(pe,s_extra_attack)) pe.dt=1.1;
         else pe.dt=1+2/(pe.attack*(pe.attack+1)/2);
         pe.offense*=pe.dt;
     },boost:(pe)=>{
@@ -627,6 +627,9 @@ class PowerEstimate{
 
         for(let i=0; i<s.length; i++){
             if(s[i].mod) s[i].mod(this);
+        }
+        for(let i=0; i<s.length; i++){
+            if(s[i].ea) s[i].ea(this);
         }
         for(let i=0; i<s.length; i++){
             if(s[i].aquatic) s[i].aquatic(this);
@@ -1787,9 +1790,11 @@ bcBtn.addEventListener("click",async function(){
         bcHolder.style.transform="";
         buildACard.classList.remove("blockAll");
         showMap();
+        arenaDeck.innerHTML="";
         buildACard.style.visibility="hidden";
         fader.classList.remove("fade");
         bcSigils.innerHTML="";
+        
 
         if(success){
             ncCanvas.remove();
@@ -2059,7 +2064,7 @@ function campfire(){
                 cfCardDiv.style.opacity=1;
                 cfCardDiv.style.transform="";
 
-                if((run.fdeck[i] instanceof ModdedCard && (run.fdeck[i].atkBoost>0 || run.fdeck[i].hpBoost>0)) || (fireType==0 && containsAny(card.getVisibleSigils(),naughtySigils))){
+                if((card instanceof ModdedCard && (card.card.custom || card.atkBoost>0 || card.hpBoost>0 || card.extraSigs.length>0)) || card.custom || (fireType==0 && containsAny(card.getVisibleSigils(),naughtySigils))){
                     setOdds(10);
                 }
                 else{
