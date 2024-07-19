@@ -223,14 +223,6 @@ async function cardDrawStage2(card,pl,justPlayed=false){
     card.style.top="0";
 
     setTimeout(function(){
-        if(game.overBool){
-            isDrawing[pl]=false;
-            cds2qs[pl].clear();
-            isDrawing[1-pl]=false;
-            cds2qs[1-pl].clear();
-            return;
-        }
-
         card.classList.remove("adding");
         setTimeout(function(){
             card.classList.remove("suppressEvents");
@@ -244,6 +236,14 @@ async function cardDrawStage2(card,pl,justPlayed=false){
             setTimeout(function(){
                 if(el) el.style.transition="";
             },100)
+        }
+
+        if(game.overBool){
+            isDrawing[pl]=false;
+            cds2qs[pl].clear();
+            isDrawing[1-pl]=false;
+            cds2qs[1-pl].clear();
+            return;
         }
 
         if(drawProm) drawProm();
@@ -356,6 +356,7 @@ function playCard(card,pl,target,nc=null){
         },100);
     }
     const targetEl=cardSpaces[pl][target];
+    const targetOverlay=boardOverlays[pl][target];
     const targetRect=targetEl.getBoundingClientRect();
     trans.style.top=targetRect.top+"px";
     trans.style.left=targetRect.left+"px";
@@ -365,6 +366,9 @@ function playCard(card,pl,target,nc=null){
         targetEl.appendChild(c2);
         trans.remove();
         c2.classList.remove("wackyStuff");
+        targetOverlay.innerHTML="";
+        const par=targetEl.parentNode;
+        par.classList.remove("helpme");
         setTimeout(function(){
             c2.classList.remove("suppressEvents");
         },200)

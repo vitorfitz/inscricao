@@ -313,8 +313,8 @@ s_rabbit.onCardPlayed.push(new Listener(listen_me,async function(){
     game.addCardToHand(c_rabbit,undefined,undefined,true,true);
 }))
 
-// s_wolf_cub.init(c_wolf);
-s_elk_fawn.init(c_elk,"Fledgling","Se torna um Cervo 2/4 no próximo turno.");
+s_wolf_cub.init(c_wolf,"Fledgling","Se torna um Lobo 3/2 no próximo turno.");
+// s_elk_fawn.init(c_elk,"Fledgling","Se torna um Cervo 2/4 no próximo turno.");
 s_raven_egg.init(c_raven,"Fledgling","Se torna um Corvo 2/3 voador no próximo turno.");
 s_sarc.init(c_mummy_lord,"Fledgling","Se torna uma Múmia 3/4 no próximo turno.");
 
@@ -610,7 +610,7 @@ s_bells.onReceivedAttack.push(new Listener(listen_ally,async function(me,attacke
             },200);
     
             await game.sleep(100);
-            await me.hit(attacker);
+            await me.hit(attacker,true);
         }
     }
 }))
@@ -1131,7 +1131,7 @@ class GameCard{
         }
     }
 
-    async hit(opp){
+    async hit(opp,alwaysBlock=false){
         for(let s of opp.sigils){
             for(let f of s.funcs.onReceivedAttack){
                 if(f.type==listen_me) await f.func(opp,this,opp,s.data);
@@ -1143,6 +1143,7 @@ class GameCard{
             //console.log(">ONHIT ABILITY "+l.caller.debugInfo());
         }
 
+        if(alwaysBlock) game.canBlock=true;
         if(game.canBlock){
             opp.damage(this.attack,this);
         }
@@ -1160,10 +1161,17 @@ class GameCard{
         updateBlockActions();
 
         game.targets=[this.pos];
+        let has_sniper=false;
         for(let s of this.sigils){
-            if(s.funcs.modifyTargets!=null){
+            if(s.funcs==s_sniper){
+                has_sniper=true;
+            }
+            else if(s.funcs.modifyTargets!=null){
                 await s.funcs.modifyTargets(this);
             }
+        }
+        if(has_sniper){
+            await s_sniper.modifyTargets(this);
         }
         for(let i=0; i<game.targets.length; i++){
             const t=game.targets[i];
@@ -1735,7 +1743,7 @@ class Game{
             }
             else{
                 card=this.deck.pop();
-                // card=c_sniper;
+                card=c_ouroboros;
                 cardsLeft=this.deck.length;
             }
         }

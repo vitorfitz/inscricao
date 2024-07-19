@@ -45,14 +45,35 @@ class SFledgling extends Sigil{
         super.init([3,2],name,desc);
         this.biggerMe=biggerMe;
         this.onTurnEnded.push(new Listener(listen_enemy,async function(me){
-            let big=GameCard.fromCard(biggerMe);
-            big.health-=(me.baseHealth-me.health);
+            let bm;
+            if(me.mods){
+                bm=new ModdedCard(biggerMe);
+                bm.extraSigs=me.mods.extraSigs;
+            }
+            else{
+                bm=biggerMe;
+            }
+            let big=GameCard.fromCard(bm);
+            big.baseHealth+=me.baseHealth-me.card.health;
+            big.health+=me.health-me.card.health;
+            big.baseAttack+=me.baseAttack-me.card.attack;
+            big.attack+=me.baseAttack-me.card.attack;
             if(big.baseHealth<me.baseHealth){
                 big.baseHealth=me.baseHealth;
                 big.health+=me.baseHealth-big.baseHealth;
             }
-            if(big.health!=big.baseHealth || big.baseHealth<me.baseHealth) big.updateStat(1,big.health);
+            big.updateStat(0,big.attack);
+            big.updateStat(1,big.health);
             removeCard(me);
+
+            const target=me.pos;
+            game.board[me.side][me.pos]=null;
+            me.pos=null;
+            for(let s of me.sigils){
+                for(let q of s.funcs.onCardMoved){
+                    if(q.type==listen_me) await q.func(me,target,me,s.data);
+                }
+            }
 
             let listenersIHave=new Array(listenerRefs.length).fill(false);
             for(let h=0; h<listenerRefs.length; h++){
@@ -76,7 +97,7 @@ class SFledgling extends Sigil{
                 }
             }
 
-            await big.place(me.pos,me.side);
+            await big.place(target,me.side);
         }.bind(this)))
     }
 }
@@ -366,7 +387,8 @@ const s_undying=new Sigil();
 const s_ouroboros=new Sigil();
 const s_sq_spawner=new SSpawner();
 const s_rabbit=new Sigil();
-const s_elk_fawn=new SFledgling();
+// const s_elk_fawn=new SFledgling();
+const s_wolf_cub=new SFledgling();
 const s_raven_egg=new SFledgling();
 const s_sarc=new SFledgling();
 const s_explosive=new Sigil();
@@ -419,7 +441,7 @@ const c_pharaoh=new Card();
 const c_draugr=new Card();
 const c_drowned=new Card();
 const c_elk=new Card();
-const c_elk_fawn=new Card();
+const c_wolf_cub=new Card();
 const c_family=new Card();
 const c_mice=new Card();
 const c_frank_stein=new Card();
