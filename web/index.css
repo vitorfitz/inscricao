@@ -682,13 +682,26 @@ button{
     margin-bottom: 0;
 }
 
-.modalBG .close{
+.modalBG .close, .closePos{
     /* position: absolute;
     top:20px; */
     float: right;
     margin-top:-12px;
     margin-right: -8px;
     margin-left: 25px;
+}
+.closePos .close{
+    margin: 0;
+}
+.closePos{
+    display: flex;
+    align-items: center;
+}
+.closePos>:not(:last-child){
+    margin-right: 12px;
+}
+#refresh{
+    cursor: pointer;
 }
 
 .modalBG .error{

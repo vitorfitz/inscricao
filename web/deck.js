@@ -85,6 +85,11 @@ function startGameSearch(){
     searchGames();
 }
 
+const refreshBtn=document.querySelector("#refresh");
+refreshBtn.addEventListener("click",function(){
+    searchGames();
+});
+
 menuOpts[2].addEventListener("click",function(){
     editor.style.visibility="visible";
     menu.style.visibility="hidden";
@@ -570,6 +575,30 @@ function move(card,pos,pl,target){
     return duration;
 }
 
+function bandaid(){
+    for(let i=0; i<2; i++){
+        const uiTurn=+(i!=game.myTurn);
+        for(let j=0; j<game.lanes; j++){
+            const card=game.board[i][j];
+            const space=cardSpaces[uiTurn][j];
+            if(card==null){
+                space.innerHTML="";
+            }
+            else{
+                let children=space.children;
+                let child=null;
+                if(children.length==1){
+                    child=children[0];
+                }
+                if(child!=card.canvas){
+                    space.innerHTML="";
+                    space.appendChild(card.canvas);
+                }
+            }
+        }
+    }
+}
+
 const scalePtr=document.querySelector("#scale_ptr");
 const scaleVal=scalePtr.querySelector("span");
 function setScale(val){
@@ -899,6 +928,7 @@ function newGame(chosen,myJSON,theirJSON,creator){
     game.freshStart(deckToArray(decks[chosen]));
     game.initConstants();
     playScreen();
+    bandaid();
 }
 
 const hearts=playScr.querySelectorAll(".heart");

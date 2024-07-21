@@ -42,6 +42,7 @@ function spendEnergy(amt,turn=game.turn){
     }
 }
 function spendResource(el,cost,turn=game.turn){
+    unselectCard();
     if(el==bones){
         game.bones[turn]-=cost;
         updateBones(turn);
@@ -1743,7 +1744,7 @@ class Game{
             }
             else{
                 card=this.deck.pop();
-                card=c_ouroboros;
+                // card=c_ouroboros;
                 cardsLeft=this.deck.length;
             }
         }
@@ -1930,7 +1931,17 @@ class Game{
                     if(spl.length>minSize){
                         for(let i=minSize; i<spl.length; i++){
                             const sacPos=parseInt(spl[i]);
-                            sacAnim(this.board[this.turn][sacPos],1,sacPos);
+                            while(true){
+                                let c=this.board[this.turn][sacPos];
+                                if(c==null){
+                                    await this.sleep(50);
+                                    console.warn("here");
+                                }
+                                else{
+                                    sacAnim(c,1,sacPos);
+                                    break;
+                                }
+                            }
                         }
                         sacrifice();
                         await game.resolve();
@@ -2000,6 +2011,7 @@ class Game{
                 case codeEndedTurn:
                     await this.endTurn();
                     // console.warn("turn");
+                    setTimeout(bandaid,500);
                     return;
                 
                 case codeDecision:
