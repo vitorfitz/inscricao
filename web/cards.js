@@ -30,14 +30,14 @@ c_insectodrone.init("Insectodrone",3,1,2,energy,[s_flying],null,[3,6]);
 c_kingfisher.init("Kingfisher",1,1,1,blood,[s_flying,s_aquatic],null,[6,6]);
 c_squirrel_ball.init("Squirrel Ball",1,1,1,blood,[s_sq_spawner],null,[8,6]);
 c_l33pbot.init("L33pbot",1,0,2,energy,[s_reach],null,[0,7]);
-c_magpie.init("Magpie",2,1,1,blood,[s_flying,s_tutor],null,[2,7]);
+c_magpie.init("Magpie",3,1,1,blood,[s_flying,s_tutor],null,[2,7]);
 // mantis god
 c_49er.init("49er",2,1,1,energy,[s_sidestep],null,[2,8]);
 c_mole.init("Mole",1,0,4,blood,[s_burrow],null,[3,8]);
 c_mole_man.init("Mole Man",1,0,4,blood,[s_burrow,s_reach],null,[4,8]);
 c_steambot.init("Steambot",6,3,3,energy,[],null,[8,8]);
 c_mummy_lord.init("Mummy Lord",5,3,4,bones,[],null,[4,9]);
-c_necromancer.init("Necromancer",3,1,2,bones,[s_double_death],null,[6,9]);
+c_necromancer.init("Necromancer",5,1,2,bones,[s_double_death],null,[6,9]);
 c_ouroboros.init("Ouroboros",2,1,1,blood,[s_ouroboros],null,[2,10]);
 c_rabbit.init("Rabbit",0,0,1,bones,[],null,[5,10],false);
 c_raven.init("Raven",2,2,3,blood,[s_flying],null,[6,10]);
@@ -57,7 +57,7 @@ c_bat.init("Bat",3,2,1,bones,[s_flying],null,[0,13]);
 c_beaver.init("Beaver",2,1,4,blood,[s_dam],null,[1,13]);
 c_dam.init("Dam",0,0,2,bones,[s_reach,s_cant_be_sacced],null,[2,13],false);
 c_bee.init("Bee",0,1,1,bones,[s_flying],null,[3,13],false);
-c_beehive.init("Beehive",1,0,2,blood,[s_beehive],null,[4,13]);
+c_beehive.init("Beehive",1,0,3,blood,[s_beehive],null,[4,13]);
 c_black_goat.init("Black Goat",2,0,5,blood,[s_worthy],null,[5,13]);
 // child 13
 c_daus.init("The Daus",2,2,2,blood,[s_bells],null,[7,13]);
@@ -88,3 +88,4 @@ c_m3atb0t.init("M3atb0t",5,0,1,energy,[s_worthy],null,[0,8]);
 
 c_rock.init("Boulder",0,0,3,bones,[s_cant_be_sacced],null,[6,16],false);
 c_pack_rat.init("Pack Rat",2,2,3,blood,[s_packin],null,[7,16],false);
+c_undead_cat.init("Undead Cat",1,3,1,blood,[],null,[1,2],false);

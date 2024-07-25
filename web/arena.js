@@ -583,7 +583,7 @@ let sigilEstimates={};
     }};
     se[s_beehive.id]={mod:(pe)=>{
         if(!has(pe,s_aquatic) && !(has(pe,s_brittle) && pe.attack>0)){
-            pe.additive+=((pe.defense+0.5)**0.55)*2.5;
+            pe.additive+=((pe.defense+0.5)**0.55)*2.2;
         }
     }};
 }

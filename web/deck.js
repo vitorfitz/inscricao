@@ -710,14 +710,26 @@ function sacAnim(card,side,pos){
     sacCards.push(card);
 }
 
-function sacrifice(){
+async function sacrifice(){
     let catsAmongUs=false;
+    let undied=[];
     for(let i=0; i<sacCards.length; i++){
-        if(!sacCards[i].hasSigil(s_free_sac)){
+        let fs=null;
+        for(let s of sacCards[i].sigils){
+            if(s.funcs==s_free_sac){
+                fs=s;
+                break;
+            }
+        }
+        if(fs==null){
             sacCards[i].die();
         }
         else{
             catsAmongUs=true;
+            fs.data.sacCounter++;
+            if(fs.data.sacCounter>=9 && sacCards[i].card==c_cat){
+                undied.push(sacCards[i]);
+            }
         }
         // else{
         //     sacCards[i].damage(1,extSource);
@@ -726,6 +738,9 @@ function sacrifice(){
         setTimeout(function(){
             aaa.remove();
         },600);
+    }
+    for(let u of undied){
+        await replace(u,c_undead_cat);
     }
     sacOverlays=[];
     sacCards=[];
@@ -819,10 +834,10 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
                     for(let i=0; i<sacCards.length; i++){
                         sacPos.push(sacCards[i].pos);
                     }
-                    const catsAmongUs=sacrifice();
-                    if(catsAmongUs && selectedCard.hasSigil(s_fecundity) && selectedCard.card.cost<=2){
-                        BSDetected();
-                    }
+                    const catsAmongUs=await sacrifice();
+                    // if(catsAmongUs && selectedCard.hasSigil(s_fecundity) && selectedCard.card.cost<=2){
+                    //     BSDetected();
+                    // }
 
                     boards[0].classList.remove("cardsClickable");
                     hands[0].classList.remove("cardsClickable");
@@ -1481,8 +1496,20 @@ manaSel[1].addEventListener("click",function(){
     updateMana();
 });
 
+const banned=document.querySelector("#banned");
+const agreeBtn=banned.querySelector("button");
+agreeBtn.addEventListener("click",function(){
+    closeModal(banned);
+});
+
 saveDeck.addEventListener("click",function(){
     const deck=decks[beingEdited];
+    // if(deck.cards[c_mice.id]>0 && deck.cards[c_cat.id]>0){
+    //     banned.style.visibility="visible";
+    //     banned.style.opacity=1;
+    //     return;
+    // }
+
     deck.name=deckTitle.textContent;
     deck.mana=selectedMana;
     deckData[beingEdited].name.textContent=deck.name;
@@ -1831,30 +1858,33 @@ function matchesSigils(card){
     return true;
 }
 
-let filteredCards=[...cards];
+// const bans=new Set([c_magpie.id]);
+const bans=new Set();
+let allowedCards=cards.filter(x=>!bans.has(x.id));
+let filteredCards=[...allowedCards];
 function calcFilters(){
     clearInterval(filter_intv);
     filteredCards=[];
 
     if(!isCFActive){
-        for(let i=0; i<cards.length; i++){
-            if(matchesSigils(cards[i])){
-                filteredCards.push(cards[i]);
+        for(let i=0; i<allowedCards.length; i++){
+            if(matchesSigils(allowedCards[i])){
+                filteredCards.push(allowedCards[i]);
             }
         }
     }
     else{
         let targetCost=selectedCosts[2]+1;
-        for(let i=0; i<cards.length; i++){
-            if(cards[i].element==elements[selectedCosts[0]]){
+        for(let i=0; i<allowedCards.length; i++){
+            if(allowedCards[i].element==elements[selectedCosts[0]]){
                 let cond;
                 switch(selectedCosts[1]){
-                    case 2: cond=cards[i].cost==targetCost; break;
-                    case 1: cond=cards[i].cost<=targetCost; break;
-                    default: cond=cards[i].cost>=targetCost;
+                    case 2: cond=allowedCards[i].cost==targetCost; break;
+                    case 1: cond=allowedCards[i].cost<=targetCost; break;
+                    default: cond=allowedCards[i].cost>=targetCost;
                 }
-                if(cond && matchesSigils(cards[i])){
-                    filteredCards.push(cards[i]);
+                if(cond && matchesSigils(allowedCards[i])){
+                    filteredCards.push(allowedCards[i]);
                 }
             }
         }

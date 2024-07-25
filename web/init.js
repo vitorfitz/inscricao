@@ -40,64 +40,68 @@ class Sigil{
     }
 }
 
+async function replace(me,biggerMe){
+    let bm;
+    if(me.mods){
+        bm=new ModdedCard(biggerMe);
+        bm.extraSigs=me.mods.extraSigs;
+    }
+    else{
+        bm=biggerMe;
+    }
+    let big=GameCard.fromCard(bm);
+    big.baseHealth+=me.baseHealth-me.card.health;
+    big.health+=me.health-me.card.health;
+    big.baseAttack+=me.baseAttack-me.card.attack;
+    big.attack+=me.baseAttack-me.card.attack;
+    if(big.baseHealth<me.baseHealth){
+        big.baseHealth=me.baseHealth;
+        big.health+=me.baseHealth-big.baseHealth;
+    }
+    big.updateStat(0,big.attack);
+    big.updateStat(1,big.health);
+    removeCard(me);
+
+    const target=me.pos;
+    game.board[me.side][me.pos]=null;
+    me.pos=null;
+    for(let s of me.sigils){
+        for(let q of s.funcs.onCardMoved){
+            if(q.type==listen_me) await q.func(me,target,me,s.data);
+        }
+    }
+
+    let listenersIHave=new Array(listenerRefs.length).fill(false);
+    for(let h=0; h<listenerRefs.length; h++){
+        for(let i=0; i<me.card.sigils.length; i++){
+            if(me.card.sigils[i][listenerFuncs[h]].length>0){
+                listenersIHave[h]=true;
+                break;
+            }
+        }
+    }
+
+    for(let h=0; h<listenerRefs.length; h++){
+        if(listenersIHave[h]){
+            for(let i=0; i<2; i++){
+                let l2=[];
+                for(let l of game[listenerRefs[h]][i]){
+                    if(l.caller!=me) l2.push(l);
+                }
+                game[listenerRefs[h]][i]=l2;
+            }
+        }
+    }
+
+    await big.place(target,me.side);
+}
+
 class SFledgling extends Sigil{
     init(biggerMe,name=null,desc=null){
         super.init([3,2],name,desc);
         this.biggerMe=biggerMe;
         this.onTurnEnded.push(new Listener(listen_enemy,async function(me){
-            let bm;
-            if(me.mods){
-                bm=new ModdedCard(biggerMe);
-                bm.extraSigs=me.mods.extraSigs;
-            }
-            else{
-                bm=biggerMe;
-            }
-            let big=GameCard.fromCard(bm);
-            big.baseHealth+=me.baseHealth-me.card.health;
-            big.health+=me.health-me.card.health;
-            big.baseAttack+=me.baseAttack-me.card.attack;
-            big.attack+=me.baseAttack-me.card.attack;
-            if(big.baseHealth<me.baseHealth){
-                big.baseHealth=me.baseHealth;
-                big.health+=me.baseHealth-big.baseHealth;
-            }
-            big.updateStat(0,big.attack);
-            big.updateStat(1,big.health);
-            removeCard(me);
-
-            const target=me.pos;
-            game.board[me.side][me.pos]=null;
-            me.pos=null;
-            for(let s of me.sigils){
-                for(let q of s.funcs.onCardMoved){
-                    if(q.type==listen_me) await q.func(me,target,me,s.data);
-                }
-            }
-
-            let listenersIHave=new Array(listenerRefs.length).fill(false);
-            for(let h=0; h<listenerRefs.length; h++){
-                for(let i=0; i<me.card.sigils.length; i++){
-                    if(me.card.sigils[i][listenerFuncs[h]].length>0){
-                        listenersIHave[h]=true;
-                        break;
-                    }
-                }
-            }
-
-            for(let h=0; h<listenerRefs.length; h++){
-                if(listenersIHave[h]){
-                    for(let i=0; i<2; i++){
-                        let l2=[];
-                        for(let l of game[listenerRefs[h]][i]){
-                            if(l.caller!=me) l2.push(l);
-                        }
-                        game[listenerRefs[h]][i]=l2;
-                    }
-                }
-            }
-
-            await big.place(target,me.side);
+            await replace(me,biggerMe);
         }.bind(this)))
     }
 }
@@ -506,6 +510,7 @@ const c_m3atb0t=new Card();
 const c_hand_tent=new Card();
 const c_rock=new Card();
 const c_pack_rat=new Card();
+const c_undead_cat=new Card();
 
 const a_bone_horn=new VanillaActivated();
 const a_disentomb=new VanillaActivated();

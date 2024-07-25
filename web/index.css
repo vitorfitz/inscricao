@@ -1600,3 +1600,19 @@ img{
         opacity: 0.5;
     }
 }
+
+#banned>*{
+    max-width: 275px;
+}
+
+#banned h2{
+    text-align: center;
+    margin-bottom:20px;
+    margin-top:-4px;
+    font-size: 24px;
+    color: #a2283a;
+}
+
+#banned button{
+    margin-top:24px;
+}

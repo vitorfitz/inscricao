@@ -401,7 +401,9 @@ s_reach.onReceivedAttack.push(new Listener(listen_me,async function(me){
     game.canBlock=true;
 }))
 
-s_free_sac.init([2,5],"Many Lives","Quando é sacrificada, em vez de morrer perde 1 de vida.");
+s_free_sac.init([2,5],"Many Lives","Não morre ao ser sacrificada.",function(me,gs){
+    return{sacCounter:0}
+});
 
 s_quills.init([4,5],"Sharp Quills","Causa 1 de dano a quem a ataca.");
 s_quills.onReceivedAttack.push(new Listener(listen_me,async function(me,them){
@@ -738,12 +740,14 @@ a_energy_gun.init([0,0],1,energy,"Energy Gun","Gasta 1 energia: causa 1 de dano 
 });
 
 a_enlarge.init([2,1],3,bones,"Enlarge","Gasta 3 ossos: Ganha +1/1.",async function(card){
-    card.attack++;
     card.health++;
-    card.baseAttack++;
     card.baseHealth++;
-    card.updateStat(0,card.attack);
     card.updateStat(1,card.health);
+    // if(card.baseAttack<10){
+        card.attack++;
+        card.baseAttack++;
+        card.updateStat(0,card.attack);
+    // }
 });
 
 function shuffle(array,k=array.length-1) {
@@ -1943,7 +1947,7 @@ class Game{
                                 }
                             }
                         }
-                        sacrifice();
+                        await sacrifice();
                         await game.resolve();
                         await this.sleep(200);
                     }
