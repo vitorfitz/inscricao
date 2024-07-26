@@ -149,13 +149,19 @@ func handleMessages() {
 					}
 				}
 			} else {
-				switch string(message.content[0]) {
+				i := 0
+				for i < len(message.content) && (message.content[i] == ' ' || (message.content[i] >= '0' && message.content[i] <= '9')) {
+					i++
+				}
+				actualMsg := message.content[i:]
+
+				switch string(actualMsg[0]) {
 				case codeCreateGame:
 					var j struct {
 						Name string
 						Data map[string]any
 					}
-					json.Unmarshal(message.content[1:], &j)
+					json.Unmarshal(actualMsg[1:], &j)
 					if j.Name == "" {
 						j.Name = fmt.Sprintf("game%d", nextGame)
 						nextGame++
@@ -180,7 +186,7 @@ func handleMessages() {
 						Name string         `json:"name"`
 						Data map[string]any `json:"data"`
 					}
-					json.Unmarshal(message.content[1:], &j)
+					json.Unmarshal(actualMsg[1:], &j)
 					gameOffer, exists := gameOffers[j.Name]
 					if !exists {
 						writeMessage(message.sender, []byte(`{"error":"Jogo foi deletado","code":0}`))

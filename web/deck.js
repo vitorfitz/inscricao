@@ -79,6 +79,8 @@ menuOpts[1].addEventListener("click",async function(){
 let gameSearchIntv=null;
 function startGameSearch(){
     respQueue.clear();
+    promQueue.clear();
+    waiting=[];
     // gameSearchIntv=setInterval(function(){
     //     searchGames();
     // },1000);
@@ -579,6 +581,11 @@ function bandaid(){
     for(let i=0; i<2; i++){
         const uiTurn=+(i!=game.myTurn);
         for(let j=0; j<game.lanes; j++){
+            const overlay=boardOverlays[uiTurn][j];
+            if(overlay.children.length!=0){
+                continue;
+            }
+
             const card=game.board[i][j];
             const space=cardSpaces[uiTurn][j];
             if(card==null){
@@ -712,7 +719,7 @@ function sacAnim(card,side,pos){
 
 async function sacrifice(){
     let catsAmongUs=false;
-    let undied=[];
+    // let undied=[];
     for(let i=0; i<sacCards.length; i++){
         let fs=null;
         for(let s of sacCards[i].sigils){
@@ -726,22 +733,20 @@ async function sacrifice(){
         }
         else{
             catsAmongUs=true;
-            fs.data.sacCounter++;
-            if(fs.data.sacCounter>=9 && sacCards[i].card==c_cat){
-                undied.push(sacCards[i]);
-            }
+            // fs.data.sacCounter++;
+            // if(fs.data.sacCounter>=9 && sacCards[i].card==c_cat){
+            //     undied.push(sacCards[i]);
+            // }
+            sacCards[i].damage(1,extSource);
         }
-        // else{
-        //     sacCards[i].damage(1,extSource);
-        // }
         const aaa=sacOverlays[i];
         setTimeout(function(){
             aaa.remove();
         },600);
     }
-    for(let u of undied){
-        await replace(u,c_undead_cat);
-    }
+    // for(let u of undied){
+    //     await replace(u,c_undead_cat);
+    // }
     sacOverlays=[];
     sacCards=[];
     return catsAmongUs;
@@ -815,7 +820,7 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
             if(sacs>=selectedCard.card.cost){
                 let canProceed=false;
                 for(let i=0; i<sacCards.length; i++){
-                    if(!sacCards[i].hasSigil(s_free_sac)/* || sacCards[i].health==1 */){
+                    if(!sacCards[i].hasSigil(s_free_sac) || sacCards[i].health==1){
                         canProceed=true;
                         break;
                     }
@@ -1048,6 +1053,9 @@ function playScreen(){
         }
     }
 
+    seqno=0;
+    incoming_seqno=0;
+
     if(game.turn!=game.myTurn){
         (new Promise((resolve)=>{
             finishedDrawing=resolve;
@@ -1161,6 +1169,8 @@ playBtn.addEventListener("click",async function(){
 
     if(isPlayClicked) return;
     respQueue.clear();
+    promQueue.clear();
+    waiting=[];
     let chosen;
     if(act==modeAct2){
         chosen=validateDeck();

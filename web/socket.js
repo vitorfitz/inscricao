@@ -64,10 +64,53 @@ let promQueue=new Queue();
 let respQueue=new Queue();
 let canStart=false;
 let isSearchOpen=false;
+let incoming_seqno=-1;
+let waiting=[];
+
+function insertSorted(array, element) {
+    let index = array.findIndex(el => el.no > element.no);
+    if (index == -1) {
+        array.push(element);
+    } else {
+        array.splice(index, 0, element);
+    }
+}
 
 socket.onmessage = function(event) {
     console.log("got "+event.data);
-    switch (event.data){
+    let msg=event.data;
+
+    if(incoming_seqno>=0){
+        if(msg[0]<"0" || msg[0]>"9"){
+            parseMsg(msg);
+        }
+        else{
+            let i=0;
+            let no_str="";
+            while(msg[i]!=" "){
+                no_str+=msg[i];
+                i++;
+            }
+            msg=msg.substring(i+1);
+            let no=parseInt(no_str);
+            
+            insertSorted(waiting,{no,msg});
+            let j=0;
+            while(j<waiting.length && waiting[j].no==incoming_seqno){
+                parseMsg(waiting[j].msg);
+                incoming_seqno++;
+                j++;
+            }
+            waiting=waiting.slice(j);
+        }
+    }
+    else{
+        parseMsg(msg);
+    }
+};
+
+function parseMsg(msg){
+    switch (msg){
         case codeResign:
             if(game) game.itsOver();
             return
@@ -82,19 +125,24 @@ socket.onmessage = function(event) {
     }
 
     if(promQueue.empty()){
-        respQueue.enqueue(event.data);
+        respQueue.enqueue(msg);
     }
     else{
-        promQueue.dequeue()(event.data);
+        promQueue.dequeue()(msg);
     }
-};
+}
 
 async function getNextMsg(){
     if(!respQueue.empty()) return respQueue.dequeue();
     return new Promise(resolve => promQueue.enqueue(resolve));
 }
 
+let seqno=-1;
 function sendMsg(msg){
+    if(seqno>=0){
+        msg=seqno+" "+msg;
+        seqno++;
+    }
     console.log("sent "+msg);
     socket.send(msg);
 }

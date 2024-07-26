@@ -401,9 +401,9 @@ s_reach.onReceivedAttack.push(new Listener(listen_me,async function(me){
     game.canBlock=true;
 }))
 
-s_free_sac.init([2,5],"Many Lives","Não morre ao ser sacrificada.",function(me,gs){
+s_free_sac.init([2,5],"Many Lives","Quando sacrificada, perde 1 de vida em vez de morrer."/*,function(me,gs){
     return{sacCounter:0}
-});
+}*/);
 
 s_quills.init([4,5],"Sharp Quills","Causa 1 de dano a quem a ataca.");
 s_quills.onReceivedAttack.push(new Listener(listen_me,async function(me,them){
@@ -1412,10 +1412,14 @@ class Game{
             scalePartial=0;
             toConsume=0;
 
+            seqno=-1;
+            incoming_seqno=-1;
+
             nuhuh.style.transitionDuration="100ms";
             nuhuh.style.opacity="0";
             respQueue.clear();
             promQueue.clear();
+            waiting=[];
 
             playScr.style.visibility="hidden";
             if(!run || (run.life[0]<=0 || run.life[1]<=0)){
@@ -1935,17 +1939,8 @@ class Game{
                     if(spl.length>minSize){
                         for(let i=minSize; i<spl.length; i++){
                             const sacPos=parseInt(spl[i]);
-                            while(true){
-                                let c=this.board[this.turn][sacPos];
-                                if(c==null){
-                                    await this.sleep(50);
-                                    console.warn("here");
-                                }
-                                else{
-                                    sacAnim(c,1,sacPos);
-                                    break;
-                                }
-                            }
+                            let c=this.board[this.turn][sacPos];
+                            sacAnim(c,1,sacPos);
                         }
                         await sacrifice();
                         await game.resolve();
@@ -2015,7 +2010,8 @@ class Game{
                 case codeEndedTurn:
                     await this.endTurn();
                     // console.warn("turn");
-                    setTimeout(bandaid,500);
+                    // setTimeout(bandaid,500);
+                    bandaid();
                     return;
                 
                 case codeDecision:

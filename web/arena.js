@@ -512,13 +512,14 @@ let sigilEstimates={};
     }};
     se[s_guardian.id]={};
     se[s_free_sac.id]={mod:(pe)=>{
-        if(has(pe,s_worthy)){
-            pe.additiveExt+=9;
-            pe.presence+=3;
-        }
-        else{
-            pe.additiveExt+=3.6;
-            pe.presence+=1.2;
+        if(pe.hp>1){
+            const f=1-1/2**(pe.hp)
+            if(has(pe,s_worthy)){
+                pe.additiveExt+=8*f+pe.hp*1;
+            }
+            else{
+                pe.additiveExt+=1.6*f+pe.hp*0.4;
+            }
         }
     }};
     se[s_quills.id]={boost:(pe)=>{
@@ -546,7 +547,7 @@ let sigilEstimates={};
         }
     }};
     se[s_worthy.id]={ext:(pe)=>{
-        if(!has(pe,s_free_sac)) pe.res+=6.5/2**((pe.res-pe.defense/pe.res*2)/6.5);
+        if(!(has(pe,s_free_sac) && pe.hp>1)) pe.res+=6.5/2**((pe.res-pe.defense/pe.res*2)/6.5);
     }};
     se[s_tutor.id]={boost:(pe)=>{
         pe.additiveExt+=6;
