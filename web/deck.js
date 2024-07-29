@@ -246,10 +246,6 @@ async function cardDrawStage2(card,pl,justPlayed=false){
         }
 
         if(game.overBool){
-            isDrawing[pl]=false;
-            cds2qs[pl].clear();
-            isDrawing[1-pl]=false;
-            cds2qs[1-pl].clear();
             return;
         }
 
@@ -285,6 +281,7 @@ function unselectCard(){
         },120);
     }
     sacs=0;
+    sacPos=[];
     boards[0].classList.remove("cardsClickable");
     boards[0].classList.remove("spacesClickable");
     sacOverlays=[];
@@ -715,6 +712,7 @@ function sacAnim(card,side,pos){
     sacOverlay.style.opacity=0.75;
     sacOverlays.push(sacOverlay);
     sacCards.push(card);
+    if(side==0) sacPos.push(card.pos);
 }
 
 async function sacrifice(){
@@ -805,6 +803,7 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
             if(ind!=-1){
                 sacs-=value;
                 sacCards.splice(ind,1);
+                sacPos.splice(ind,1);
                 const sacOverlay=sacOverlays[ind];
                 sacOverlays.splice(ind,1);
                 sacOverlay.style.opacity=0;
@@ -836,9 +835,6 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
                 }
 
                 if(canProceed){
-                    for(let i=0; i<sacCards.length; i++){
-                        sacPos.push(sacCards[i].pos);
-                    }
                     const catsAmongUs=await sacrifice();
                     // if(catsAmongUs && selectedCard.hasSigil(s_fecundity) && selectedCard.card.cost<=2){
                     //     BSDetected();
@@ -879,8 +875,8 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
             }
 
             const msgVals=[codePlayedCard,i,handIndex,...played.toSocket(),...sacPos];            
-            sacPos=[];
             sendMsg(prefix+msgVals.join(" "));
+            sacPos=[];
 
             await selectedCard.play(i);
             if(!isSaccing){
@@ -935,7 +931,7 @@ function updateScale(damage){
     }
 }
 
-function newGame(chosen,myJSON,theirJSON,creator){
+async function newGame(chosen,myJSON,theirJSON,creator){
     let _manas;
     if(theirJSON.myTurn==0){
         _manas=[myJSON.mana,theirJSON.mana];
@@ -944,6 +940,7 @@ function newGame(chosen,myJSON,theirJSON,creator){
         _manas=[theirJSON.mana,myJSON.mana];
     }
 
+    if(game) await game.over;
     game=new Game(_manas,theirJSON.myTurn,creator.tippingPoint,creator.cardsPerTurn);
     game.freshStart(deckToArray(decks[chosen]));
     game.initConstants();

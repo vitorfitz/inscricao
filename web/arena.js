@@ -515,10 +515,14 @@ let sigilEstimates={};
         if(pe.hp>1){
             const f=1-1/2**(pe.hp)
             if(has(pe,s_worthy)){
-                pe.additiveExt+=8*f+pe.hp*1;
+                pe.additiveExt+=11.25*f;
+                pe.presence+=2;
+                pe.defense/=2;
             }
             else{
                 pe.additiveExt+=1.6*f+pe.hp*0.4;
+                pe.presence+=0.5;
+                pe.defense/=2;
             }
         }
     }};
@@ -824,6 +828,7 @@ const battleNode=new NodeType("Batalha",null,"battle.webp",function(){
             resolve();
         },fadeTimer));
 
+        if(game) await game.over;
         game=new Game(run.myTurn==0? run.manas: [run.manas[1],run.manas[0]],run.myTurn,run.tippingPoint,run.cardsPerTurn);
         game.freshStart(run.fdeck,run.oppDeckSize,10);
         game.initConstants();

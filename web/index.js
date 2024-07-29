@@ -1405,12 +1405,19 @@ class Game{
 
         setTimeout(async function(){
             this.overProm();
+            isDrawing[0]=false;
+            cds2qs[0].clear();
+            isDrawing[1]=false;
+            cds2qs[1].clear();
             for (const t of this.timeouts) {
                 clearTimeout(t);
             }
             clearInterval(scaleIntv);
             scalePartial=0;
             toConsume=0;
+            unselectCard();
+            sacCards=[];
+            sacOverlays=[];
 
             seqno=-1;
             incoming_seqno=-1;
@@ -1940,6 +1947,10 @@ class Game{
                         for(let i=minSize; i<spl.length; i++){
                             const sacPos=parseInt(spl[i]);
                             let c=this.board[this.turn][sacPos];
+                            while(c==null){
+                                await this.sleep(50);
+                                c=this.board[this.turn][sacPos];
+                            }
                             sacAnim(c,1,sacPos);
                         }
                         await sacrifice();
