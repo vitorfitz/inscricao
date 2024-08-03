@@ -1798,7 +1798,7 @@ class Game{
             }
             else{
                 card=this.deck.pop();
-                card=c_mantis;
+                // card=c_mantis;
                 cardsLeft=this.deck.length;
             }
         }
