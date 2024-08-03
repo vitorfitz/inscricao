@@ -315,7 +315,7 @@ s_rabbit.onCardPlayed.push(new Listener(listen_me,async function(){
 }))
 
 s_wolf_cub.init(c_wolf,"Fledgling","Se torna um Lobo 3/2 no próximo turno.");
-// s_elk_fawn.init(c_elk,"Fledgling","Se torna um Cervo 2/4 no próximo turno.");
+s_elk_fawn.init(c_elk,"Fledgling","Se torna um Cervo 2/4 no próximo turno.");
 s_raven_egg.init(c_raven,"Fledgling","Se torna um Corvo 2/3 voador no próximo turno.");
 s_sarc.init(c_mummy_lord,"Fledgling","Se torna uma Múmia 3/4 no próximo turno.");
 
@@ -334,6 +334,19 @@ s_explosive.onCardDied.push(new Listener(listen_me,async function(me,them){
         let c=me.pos+i;
         if(c>=0 && c<game.lanes){
             if(game.board[me.side][c]!=null) game.board[me.side][c].damage(5,me);
+        }
+    }
+}));
+
+s_explosive10.init([4,2],"Detonator","Ao morrer causa 10 de dano às cartas adjacentes (na vertical e horizontal).");
+s_explosive10.onCardDied.push(new Listener(listen_me,async function(me,them){
+    if(game.board[1-me.side][me.pos]!=null){
+        game.board[1-me.side][me.pos].damage(10,me);
+    }
+    for(let i=-dirs[me.side],j=0; j<2; i+=2*dirs[me.side],j++){
+        let c=me.pos+i;
+        if(c>=0 && c<game.lanes){
+            if(game.board[me.side][c]!=null) game.board[me.side][c].damage(10,me);
         }
     }
 }));
@@ -404,6 +417,10 @@ s_reach.onReceivedAttack.push(new Listener(listen_me,async function(me){
 s_free_sac.init([2,5],"Many Lives","Quando sacrificada, perde 1 de vida em vez de morrer."/*,function(me,gs){
     return{sacCounter:0}
 }*/);
+
+s_freer_sac.init([2,5],"Many Lives","Não morre ao ser sacrificada.",function(me,gs){
+    return{sacCounter:0}
+});
 
 s_quills.init([4,5],"Sharp Quills","Causa 1 de dano a quem a ataca.");
 s_quills.onReceivedAttack.push(new Listener(listen_me,async function(me,them){
@@ -701,7 +718,13 @@ s_packin.onCardPlayed.push(new Listener(listen_me,async function(me){
     gameItemDivs[ind].appendChild(el);
 }));
 
+s_handy.init([0,2],"Handy","Descarte sua mão e compre 4 cartas.",undefined,true);
+s_handy.onCardPlayed.push(new Listener(listen_me,async function(me){
+    // TODO
+}));
+
 const cards=[];
+const origCards=[];
 const allCards=[];
 const tooltip=document.querySelector("#tooltip");
 let hoveredTT=null;
@@ -748,6 +771,22 @@ a_enlarge.init([2,1],3,bones,"Enlarge","Gasta 3 ossos: Ganha +1/1.",async functi
         card.baseAttack++;
         card.updateStat(0,card.attack);
     // }
+});
+
+a_enlarge_unn.init([4,1],2,bones,"Enlarge","Gasta 2 ossos: Ganha +1/1.",async function(card){
+    card.health++;
+    card.baseHealth++;
+    card.updateStat(1,card.health);
+    card.attack++;
+    card.baseAttack++;
+    card.updateStat(0,card.attack);
+});
+
+a_gamble.init([2,0],1,energy,"Gamble","Define o ataque para um número aleatório de 1 a 6.",async function(card){
+    const old_ba=card.baseAttack;
+    card.baseAttack=1+Math.floor(Math.random()*6);
+    card.attack+=card.baseAttack-old_ba;
+    card.updateStat(0,card.attack);
 });
 
 function shuffle(array,k=array.length-1) {
@@ -1759,7 +1798,7 @@ class Game{
             }
             else{
                 card=this.deck.pop();
-                // card=c_ouroboros;
+                card=c_mantis;
                 cardsLeft=this.deck.length;
             }
         }

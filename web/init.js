@@ -215,6 +215,10 @@ class VanillaActivated extends Activated{
     }
 }
 
+const mode_orig=0;
+const mode_exp=0;
+let mode=mode_exp;
+
 class Card{
     init(n,c,a,h,e,s,a2,p,collectible=true,custom=false){
         this.name=n;
@@ -260,13 +264,28 @@ class Card{
         }
     }
 
-    getHealth(){return this.health;}
-    getAttack(){return this.attack;}
-    getCost(){return this.cost;}
-    getElement(){return this.element;}
-    getVisibleSigils(){return this.visibleSigils;}
+    init_orig(c=this.cost,a=this.attack,h=this.health,s=this.sigils){
+        this.origCost=c;
+        this.origAtk=a;
+        this.origHP=h;
+        this.origSigils=s;
+        this.origVisible=[];
+        for(let sigil of s){
+            if(sigil.coords!=null){
+                this.origVisible.push(sigil);
+            }
+        }
+        this.origID=origCards.length;
+        origCards.push(this);
+    }
 
-    renderAlsoReturnCtx(scale,unsac=this.hasSigil(s_cant_be_sacced),atk=this.attack,hp=this.health){
+    getHealth(){return mode==mode_exp? this.health: this.origHP;}
+    getAttack(){return mode==mode_exp? this.attack: this.origAtk;}
+    getCost(){return mode==mode_exp? this.cost: this.origCost;}
+    getElement(){return this.element;}
+    getVisibleSigils(){return mode==mode_exp? this.visibleSigils: this.origVisible;}
+
+    renderAlsoReturnCtx(scale,unsac=this.hasSigil(s_cant_be_sacced),atk=this.getAttack(),hp=this.getHealth()){
         const d=document.createElement("div");
         d.style.width=cardWidth*scale+"px";
         d.style.height=cardHeight*scale+"px";
@@ -508,6 +527,8 @@ const c_bone_heap=new Card();
 const c_mirror_tent=new Card();
 const c_m3atb0t=new Card();
 const c_hand_tent=new Card();
+const c_horseman=new Card();
+
 const c_rock=new Card();
 const c_pack_rat=new Card();
 const c_undead_cat=new Card();
@@ -516,3 +537,14 @@ const a_bone_horn=new VanillaActivated();
 const a_disentomb=new VanillaActivated();
 const a_energy_gun=new VanillaActivated();
 const a_enlarge=new VanillaActivated();
+
+const c_mantis_god=new Card();
+const c_elk_fawn=new Card();
+const c_dead_hand=new Card();
+const c_gambling=new Card();
+const a_enlarge_unn=new VanillaActivated();
+const a_gamble=new VanillaActivated();
+const s_handy=new Sigil();
+const s_elk_fawn=new SFledgling();
+const s_freer_sac=new Sigil();
+const s_explosive10=new Sigil();

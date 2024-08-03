@@ -90,11 +90,11 @@ class ModdedCard{
         // this.extraAct=null;
     }
 
-    getHealth(){return this.hpBoost+this.card.health;}
-    getAttack(){return this.atkBoost+this.card.attack;}
+    getHealth(){return this.hpBoost+this.card.getHealth();}
+    getAttack(){return this.atkBoost+this.card.getAttack();}
     getCost(){return this.card.cost;}
     getElement(){return this.card.element;}
-    getVisibleSigils(){return [...this.extraSigs,...this.card.visibleSigils];}
+    getVisibleSigils(){return [...this.extraSigs,...this.card.getVisibleSigils()];}
 
     addDrip(canvas,scale=2){
         return addDrip(this.extraSigs,canvas,scale);

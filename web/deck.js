@@ -477,9 +477,7 @@ function moveForward(card,pos,pl,target){
     else{
         targetDir=1;
     }
-    if(game.turn!=game.myTurn){
-        targetDir*=-1;
-    }
+    console.log(game.turn,game.myTurn);
     if(game.myTurn==1){
         targetDir*=-1;
     }
@@ -717,11 +715,11 @@ function sacAnim(card,side,pos){
 
 async function sacrifice(){
     let catsAmongUs=false;
-    // let undied=[];
+    let undied=[];
     for(let i=0; i<sacCards.length; i++){
         let fs=null;
         for(let s of sacCards[i].sigils){
-            if(s.funcs==s_free_sac){
+            if(s.funcs==s_free_sac || s.funcs==s_freer_sac){
                 fs=s;
                 break;
             }
@@ -731,20 +729,22 @@ async function sacrifice(){
         }
         else{
             catsAmongUs=true;
-            // fs.data.sacCounter++;
-            // if(fs.data.sacCounter>=9 && sacCards[i].card==c_cat){
-            //     undied.push(sacCards[i]);
-            // }
-            sacCards[i].damage(1,extSource);
+            if(fs.funcs==s_free_sac) sacCards[i].damage(1,extSource);
+            else{
+                fs.data.sacCounter++;
+                if(fs.data.sacCounter>=9 && sacCards[i].card==c_cat){
+                    undied.push(sacCards[i]);
+                }
+            }
         }
         const aaa=sacOverlays[i];
         setTimeout(function(){
             aaa.remove();
         },600);
     }
-    // for(let u of undied){
-    //     await replace(u,c_undead_cat);
-    // }
+    for(let u of undied){
+        await replace(u,c_undead_cat);
+    }
     sacOverlays=[];
     sacCards=[];
     return catsAmongUs;
@@ -819,7 +819,7 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
             if(sacs>=selectedCard.card.cost){
                 let canProceed=false;
                 for(let i=0; i<sacCards.length; i++){
-                    if(!sacCards[i].hasSigil(s_free_sac) || sacCards[i].health==1){
+                    if(!sacCards[i].hasSigil(s_freer_sac) && (!sacCards[i].hasSigil(s_free_sac) || sacCards[i].health==1)){
                         canProceed=true;
                         break;
                     }
@@ -1408,6 +1408,7 @@ class Deck{
         this.mana=0;
         this.size=0;
         this.name="";
+        this.mode=mode_exp;
     }
 }
 
@@ -1466,6 +1467,9 @@ for(let i=0; i<deckSlots; i++){
     const saved=localStorage.getItem("deck"+i);
     if(saved!=null){
         decks[i]=JSON.parse(saved);
+        if(!mode in decks[i]){
+            decks[i].mode=mode_exp;
+        }
         for(let j=decks[i].cards.length; j<cards.length; j++){
             decks[i].cards[j]=0;
         }
@@ -1865,9 +1869,7 @@ function matchesSigils(card){
     return true;
 }
 
-// const bans=new Set([c_magpie.id]);
-const bans=new Set();
-let allowedCards=cards.filter(x=>!bans.has(x.id));
+let allowedCards=cards;
 let filteredCards=[...allowedCards];
 function calcFilters(){
     clearInterval(filter_intv);
