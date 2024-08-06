@@ -1928,6 +1928,9 @@ class Game{
                     async function myFunc(){
                         if(rem==0) return;
                         rem--;
+                        if(this.deck.length==0 && this.manasLeft[game.turn]==0){
+                            rem=0;
+                        }
                         if(rem==0){
                             for(let j=0; j<2; j++){
                                 deckPiles[0][j].removeEventListener("click", myFunc);
@@ -1945,7 +1948,7 @@ class Game{
                             updateBlockActions();
                         }
                     }
-                    deckPiles[0][i].addEventListener("click",myFunc);
+                    deckPiles[0][i].addEventListener("click",myFunc.bind(this));
                     deckPiles[0][i].style.cursor="pointer";
                 }
             }
