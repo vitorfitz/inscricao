@@ -535,7 +535,7 @@ let sigilEstimates={};
             }
             else{
                 if(has(pe,s_burrow)){
-                    pe.additive+=(pe.defense+0.5+1.5**Math.min(10,pe.defense)/15)*0.48;
+                    pe.additive+=(pe.defense+0.5+1.5**Math.min(10,pe.defense)/15)*0.64;
                 }
                 else{
                     pe.additive+=pe.defense*0.25+0.5;
