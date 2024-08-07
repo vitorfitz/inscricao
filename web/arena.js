@@ -424,7 +424,7 @@ let sigilEstimates={};
 {
     const se=sigilEstimates;
     se[s_bomb.id]={mod:(pe)=>{
-        pe.additiveExt+=5.5;
+        pe.additiveExt+=7.5;
         if(pe.hp<=5){
             if(has(pe,s_flying)) pe.offense*=0.75;
             else pe.offense*=0.3;
@@ -495,7 +495,7 @@ let sigilEstimates={};
         if(pe.offense!=0) pe.additive+=((0.5+pe.defense)*(0.5+pe.offense))*0.28;
     }};
     se[s_energy.id]={ext:(pe)=>{
-       pe.res+=2.5/2**(pe.res/7.5);
+       pe.res+=2.5/2**(pe.res/7.5+0.5);
     }};
     se[s_push.id]={};
     se[s_bones.id]={boost:(pe)=>{
@@ -504,7 +504,7 @@ let sigilEstimates={};
     se[s_reach.id]={boost:(pe)=>{
         if(!has(pe,s_aquatic)){
             if(has(pe,s_burrow)) pe.additive+=(pe.defense+1/3)/5;
-            else pe.additive+=(pe.defense+1)/16;
+            else pe.additive+=(pe.defense+1)/8;
         }
     }};
     se[s_sidestep.id]={boost:(pe)=>{
@@ -535,7 +535,7 @@ let sigilEstimates={};
             }
             else{
                 if(has(pe,s_burrow)){
-                    pe.additive+=(pe.defense+0.5+1.5**Math.min(10,pe.defense)/15)*0.64;
+                    pe.additive+=(pe.defense+0.5+1.5**Math.min(10,pe.defense)/15)*0.48;
                 }
                 else{
                     pe.additive+=pe.defense*0.25+0.5;
@@ -561,8 +561,8 @@ let sigilEstimates={};
     },boost:(pe)=>{
         if(!has(pe,s_aquatic)){
             let mult=0.9;
-            if(has(pe,s_death_touch) && has(pe,s_quills)) {mult+=1.4; pe.additive-=Math.min(pe.defense,2);}
-            if(has(pe,s_beehive)) mult+=0.8;
+            if(has(pe,s_death_touch) && has(pe,s_quills)) {mult+=1.2; pe.additive-=Math.min(pe.defense,2);}
+            if(has(pe,s_beehive)) mult+=0.5;
             pe.additive+=mult*(pe.defense+(1.5**Math.min(13,pe.defense*mult))/60);
         }
     }};
@@ -671,9 +671,31 @@ class PowerEstimate{
     }
 }
 
+function correctPE(est,chosenEl,chosenCost,sigilObjs){
+    const isSus=sigilObjs.indexOf(s_fecundity)!=-1 || sigilObjs.indexOf(s_undying)!=-1;
+    if(isSus){
+        if(chosenCost==1 && chosenEl==blood){
+            return est*1.5;
+        }
+        else if(chosenCost<=3 && chosenEl==blood && sigilObjs.indexOf(s_worthy)!=-1){
+            return est*1.5;
+        }
+        else if(chosenCost<=1 && chosenEl==bones){
+            return est*1.5;
+        }
+        else if(chosenCost<=3 && chosenEl==bones && sigilObjs.indexOf(s_dam)!=-1){
+            return est*1.5;
+        }
+        else if(chosenCost<=4 && chosenEl==bones && sigilObjs.indexOf(s_bones)!=-1){
+            return est*1.5;
+        }
+    }
+    return est;
+}
+
 const costToPower=[
     [3,4.5,6,7.5,9,11,13,15,17,19,21,23,25],
-    [3,6,10,15,25],
+    [3,6.5,9.5,14.5,25],
     [3,3.5,4.5,5.5,7,8.5,10]
 ];
 function elToPosition(el){
@@ -728,7 +750,7 @@ function buffedCards(){
         for(let j of sCopy){
             const together=[j,...picks[i].sigils];
             if(checkAllowed(together)){
-                const ev=(new PowerEstimate(picks[i].attack,picks[i].health,together)).calc();
+                const ev=correctPE((new PowerEstimate(picks[i].attack,picks[i].health,together)).calc(),picks[i].element,picks[i].cost,picks[i].sigils);
                 if(ev>=minThresh && ev<=maxThresh){
                     for(let i=0; i<numMono; i++){
                         combos.push([j]);
@@ -744,7 +766,7 @@ function buffedCards(){
             const combo=sCopy.slice(sCopy.length-2);
             const together=[...combo,...picks[i].sigils];
             if(checkAllowed(together)){
-                const ev=(new PowerEstimate(picks[i].attack,picks[i].health,together)).calc();
+                const ev=correctPE((new PowerEstimate(picks[i].attack,picks[i].health,together)).calc(),picks[i].element,picks[i].cost,picks[i].sigils);
                 if(ev>=minThresh && ev<=maxThresh){
                     combos.push(combo); 
                     if(combo.indexOf(s_brittle)!=-1) {for(let i=0; i<19; i++) combos.push(combo)};
@@ -1615,21 +1637,7 @@ const shakeDur=260;
 let failChance;
 
 async function updateOPmeter(){
-    let correctedEst=est;
-    const isSus=sigilObjs.indexOf(s_fecundity)!=-1 || sigilObjs.indexOf(s_undying)!=-1;
-    if(isSus){
-        if(chosenCost==1 && chosenEl==blood){
-            correctedEst+=2; 
-        }
-        else if(chosenCost<=3 && chosenEl==bones){
-            correctedEst+=2; 
-        }
-        else if(chosenCost<=5 && chosenEl==bones && sigilObjs.indexOf(s_bones)!=-1){
-            correctedEst+=2; 
-        }
-    }
-
-    const powerPercent=correctedEst/costToPower[chosenEl][chosenCost]*0.9;
+    const powerPercent=correctPE(est,chosenEl,chosenCost,sigilObjs)/costToPower[chosenEl][chosenCost]*0.91;
     let meterPercent=powerPercent;
     if(meterPercent>1) meterPercent-=(meterPercent-1)/2;
     let rotation=baseRotate+Math.min(maxRotate,redRotate*meterPercent);

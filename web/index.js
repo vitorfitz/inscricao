@@ -1443,7 +1443,6 @@ class Game{
         },250);
 
         setTimeout(async function(){
-            this.overProm();
             isDrawing[0]=false;
             cds2qs[0].clear();
             isDrawing[1]=false;
@@ -1511,6 +1510,8 @@ class Game{
                     energyBars[i][j].src="icons/energy_empty.png";
                 }
             }
+
+            this.overProm();
         }.bind(this),1500);
     }
 
