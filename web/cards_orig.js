@@ -61,6 +61,8 @@ c_elk_fawn.init_orig();
 c_mantis_god.init_orig();
 c_gambling.init_orig();
 c_dead_hand.init_orig();
+c_sentry.init_orig();
+c_shutterbug.init_orig();
 
 c_undead_cat.init_orig_no_id();
 c_starvation.init_orig_no_id();

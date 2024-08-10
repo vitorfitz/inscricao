@@ -181,7 +181,8 @@ const allActivated=[];
 class Activated{
     init(coords,name,desc,func,
         conds=function(card,data,sigil){return true;},
-        initData=function(card,sigil){}
+        initData=function(card,sigil){},
+        genMsg=function(card,data){return[];}
     ){
         this.name=name;
         this.desc=desc;
@@ -189,6 +190,7 @@ class Activated{
         this.func=func;
         this.conds=conds;
         this.initData=initData;
+        this.genMsg=genMsg;
 
         this.id=allActivated.length;
         allActivated.push(this);
@@ -202,16 +204,17 @@ class Activated{
 class VanillaActivated extends Activated{
     init(coords,cost,element,name,desc,func,
         conds=function(card,data,sigil){return true;},
-        initData=function(card,sigil){}
+        initData=function(card,sigil){},
+        genMsg=function(card,data){return[];}
     ){
         let conds2=function(card,data,sigil){
             return checkCost(element,cost) && conds(card,data,sigil);
         }
-        let func2=function(card,data){
+        let func2=function(card,data,msg){
             spendResource(element,cost,card.side);
-            func(card,data);
+            func(card,data,msg);
         };
-        super.init(coords,name,desc,func2,conds2,initData);
+        super.init(coords,name,desc,func2,conds2,initData,genMsg);
     }
 }
 
@@ -564,9 +567,13 @@ const c_mantis_god=new Card();
 const c_elk_fawn=new Card();
 const c_dead_hand=new Card();
 const c_gambling=new Card();
+const c_sentry=new Card();
+const c_shutterbug=new Card();
+
 const a_enlarge_unn=new VanillaActivated();
 const a_gamble=new VanillaActivated();
 const s_handy=new Sigil();
 const s_elk_fawn=new SFledgling();
 const s_freer_sac=new Sigil();
 const s_explosive10=new Sigil();
+const s_sentry=new Sigil();

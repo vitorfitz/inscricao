@@ -126,7 +126,6 @@ function maintainOppItems(search=run.revealedItems){
     return ind;
 }
 
-let lensIndex;
 const lensEl=document.querySelector("#floatingLens")
 lensEl.addEventListener("click",async function(){
     if(game.turn==game.myTurn && blockActions==1 && lensIndex!=-1){

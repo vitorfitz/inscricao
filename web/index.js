@@ -351,6 +351,14 @@ s_explosive10.onCardDied.push(new Listener(listen_me,async function(me,them){
     }
 }));
 
+s_sentry.init([3,5],"Sentry","Causa 1 de dano às cartas que entrarem na frente dela.");
+s_sentry.onCardMoved.push(new Listener(listen_enemy,async function(me,oldPos,mover){
+    if(mover.pos==me.pos){
+        await game.sleep(250);
+        mover.damage(1,me);
+    }
+}));
+
 s_flying.init([0,3],"Airborne","Ataca o oponente diretamente.");
 s_flying.onDealtAttack=function(me,them){
     game.canBlock=false;
@@ -425,6 +433,7 @@ s_freer_sac.init([2,5],"Many Lives","Não morre ao ser sacrificada.",function(me
 s_quills.init([4,5],"Sharp Quills","Causa 1 de dano a quem a ataca.");
 s_quills.onReceivedAttack.push(new Listener(listen_me,async function(me,them){
     if(game.canBlock){
+        await game.sleep(250);
         them.damage(1,me);
     }
 }))
@@ -601,17 +610,17 @@ s_sniper.modifyTargets=async function(me){
     }
 }
 
-s_blood_lust.init([0,7],"Blood Lust","Ganha +1 ataque ao matar uma carta.",function(){
-    return{amAttacking:false};
-});
-s_blood_lust.onReceivedAttack.push(new Listener(listen_enemy,async function(me,opp,attacker,memory){
-    memory.amAttacking=attacker==me;
-}))
-s_blood_lust.onCardDied.push(new Listener(listen_enemy,async function(me,opp,memory){
-    if(memory.amAttacking && game.turn==me.side){
-        me.attack++;
-    }
-}))
+// s_blood_lust.init([0,7],"Blood Lust","Ganha +1 ataque ao matar uma carta.",function(){
+//     return{amAttacking:false};
+// });
+// s_blood_lust.onReceivedAttack.push(new Listener(listen_enemy,async function(me,opp,attacker,memory){
+//     memory.amAttacking=attacker==me;
+// }))
+// s_blood_lust.onCardDied.push(new Listener(listen_enemy,async function(me,opp,memory){
+//     if(memory.amAttacking && game.turn==me.side){
+//         me.attack++;
+//     }
+// }))
 
 s_dam.init([1,7],"Dam Builder","Invoca Represas 0/2 nos espaços adjacentes. Elas bloqueiam cartas voadoras.");
 s_dam.onCardPlayed.push(new Listener(listen_me,async function(me){
@@ -799,12 +808,12 @@ a_enlarge_unn.init([4,1],2,bones,"Enlarge","Gasta 2 ossos: Ganha +1/1.",async fu
     card.updateStat(0,card.attack);
 });
 
-a_gamble.init([2,0],1,energy,"Gamble","Define o ataque para um número aleatório de 1 a 6.",async function(card){
+a_gamble.init([2,0],1,energy,"Gamble","Define o ataque para um número aleatório de 1 a 6.",async function(card,_,msg){
     const old_ba=card.baseAttack;
-    card.baseAttack=1+Math.floor(Math.random()*6);
+    card.baseAttack=1+msg[0];
     card.attack+=card.baseAttack-old_ba;
     card.updateStat(0,card.attack);
-});
+},undefined,undefined,function(){return[Math.floor(Math.random()*6)];});
 
 function shuffle(array,k=array.length-1,invert=false) {
     const end=array.length-1-k;
@@ -1007,8 +1016,9 @@ class GameCard{
                 if(this.activated.enabled && blockActions==0){
                     blockActions++;
                     updateBlockActions();
-                    sendMsg(codeActivated+" "+this.pos);
-                    await this.activate();
+                    const msg=this.activated.funcs.genMsg();
+                    sendMsg(codeActivated+" "+[this.pos,...msg].join(" "));
+                    await this.activate(msg);
                     blockActions--;
                     updateBlockActions();
                 }
@@ -1027,7 +1037,7 @@ class GameCard{
         return this.card.name+" @("+this.side+","+this.pos+")";
     }
 
-    async activate(){
+    async activate(msg){
         //console.log("<ACTIVATING "+this.debugInfo());
 
         const el=this.sigilEls[0];
@@ -1036,7 +1046,7 @@ class GameCard{
             el.classList.remove("clicked");
         },250);
 
-        await this.activated.funcs.func(this,this.activated.data);
+        await this.activated.funcs.func(this,this.activated.data,msg);
         await game.resolve();
 
         //console.log(">ACTIVATING "+this.debugInfo());
@@ -1278,7 +1288,7 @@ const dirs=[1,-1];
 let listenerRefs=["deathListeners", "playListeners", "attackListeners", "dmgListeners", "turnEndListeners", "faceListeners", "movementListeners","drawListeners"];
 let listenerFuncs=["onCardDied", "onCardPlayed", "onReceivedAttack", "onReceivedDmg", "onTurnEnded", "onFaceDmg", "onCardMoved","onCardDrawn"];
 const extSource=0;
-
+let lensIndex;
 class Game{
     constructor(_manas,myTurn,tippingPoint=5,cardsPerTurn=1,lanes=4){
         this.starts=[0,lanes-1];
@@ -2023,9 +2033,10 @@ class Game{
             let modMsg=null,customMsg=null;
             switch (msg[0]){
                 case codeActivated:
-                    let actPos=parseInt(msg.substring(2));
+                    let spl2=msg.substring(2).split(" ");
+                    let actPos=parseInt(spl2[0]);
                     let actCard=this.board[game.turn][actPos];
-                    await actCard.activate();
+                    await actCard.activate(spl2.slice(1).map((x)=>parseInt(x)));
                     break;
 
                 case codePlayedModded:
