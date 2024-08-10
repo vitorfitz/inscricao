@@ -50,10 +50,10 @@ async function replace(me,biggerMe){
         bm=biggerMe;
     }
     let big=GameCard.fromCard(bm);
-    big.baseHealth+=me.baseHealth-me.card.health;
-    big.health+=me.health-me.card.health;
-    big.baseAttack+=me.baseAttack-me.card.attack;
-    big.attack+=me.baseAttack-me.card.attack;
+    big.baseHealth+=me.baseHealth-me.card.getHealth();
+    big.health+=me.health-me.card.getHealth();
+    big.baseAttack+=me.baseAttack-me.card.getAttack();
+    big.attack+=me.baseAttack-me.card.getAttack();
     if(big.baseHealth<me.baseHealth){
         big.baseHealth=me.baseHealth;
         big.health+=me.baseHealth-big.baseHealth;
@@ -73,8 +73,8 @@ async function replace(me,biggerMe){
 
     let listenersIHave=new Array(listenerRefs.length).fill(false);
     for(let h=0; h<listenerRefs.length; h++){
-        for(let i=0; i<me.card.sigils.length; i++){
-            if(me.card.sigils[i][listenerFuncs[h]].length>0){
+        for(let i=0; i<me.card.getSigils().length; i++){
+            if(me.card.getSigils()[i][listenerFuncs[h]].length>0){
                 listenersIHave[h]=true;
                 break;
             }
@@ -216,8 +216,9 @@ class VanillaActivated extends Activated{
 }
 
 const mode_orig=0;
-const mode_exp=0;
+const mode_exp=1;
 let mode=mode_exp;
+const modeNames=["Classic","Extended"];
 
 class Card{
     init(n,c,a,h,e,s,a2,p,collectible=true,custom=false){
@@ -264,26 +265,46 @@ class Card{
         }
     }
 
-    init_orig(c=this.cost,a=this.attack,h=this.health,s=this.sigils){
+    init_orig(c=this.cost,a=this.attack,h=this.health,s=this.sigils,a2=this.activated,collec=true){
         this.origCost=c;
+        if(this.element==bones && c>10){
+            this.origCXPos=1;
+            this.origCYPos=c-4;
+        }
+        else{
+            this.origCXPos=this.element;
+            this.origCYPos=c-1;
+        }
+
         this.origAtk=a;
         this.origHP=h;
         this.origSigils=s;
         this.origVisible=[];
+        this.origAct=a2;
         for(let sigil of s){
             if(sigil.coords!=null){
                 this.origVisible.push(sigil);
             }
         }
-        this.origID=origCards.length;
-        origCards.push(this);
+        if(collec){
+            this.origID=origCards.length;
+            origCards.push(this);
+        }
+    }
+
+    init_orig_no_id(){
+        this.init_orig(undefined,undefined,undefined,undefined,undefined,false);
     }
 
     getHealth(){return mode==mode_exp? this.health: this.origHP;}
     getAttack(){return mode==mode_exp? this.attack: this.origAtk;}
     getCost(){return mode==mode_exp? this.cost: this.origCost;}
+    getCostXPos(){return mode==mode_exp? this.costXPos: this.origCXPos;}
+    getCostYPos(){return mode==mode_exp? this.costYPos: this.origCYPos;}
     getElement(){return this.element;}
+    getActivated(){return mode==mode_exp? this.activated: this.origAct;}
     getVisibleSigils(){return mode==mode_exp? this.visibleSigils: this.origVisible;}
+    getSigils(){return mode==mode_exp? this.sigils: this.origSigils;}
 
     renderAlsoReturnCtx(scale,unsac=this.hasSigil(s_cant_be_sacced),atk=this.getAttack(),hp=this.getHealth()){
         const d=document.createElement("div");
@@ -326,12 +347,12 @@ class Card{
             drawStat(ctx,scale,0,atk);
         }
 
-        if(this.cost!=0){
-            i_costs.draw(ctx,scale,this.costXPos,this.costYPos,cost_alignX,1);
+        if(this.getCost()!=0){
+            i_costs.draw(ctx,scale,this.getCostXPos(),this.getCostYPos(),cost_alignX,1);
         }
         
-        if(this.activated){
-            const el=addSigilElement(this.activated);
+        if(this.getActivated()){
+            const el=addSigilElement(this.getActivated());
             el.width=i_act.dims[0]*scale;
             el.height=i_act.dims[1]*scale;
             el.style.left=act_alignX*scale+"px";
@@ -339,10 +360,10 @@ class Card{
             el.classList.add("actSigil");
             el.style.setProperty("--scale",scale);
             
-            i_act.draw(el.getContext("2d"),scale,this.activated.coords[0],this.activated.coords[1],0,0);
+            i_act.draw(el.getContext("2d"),scale,this.getActivated().coords[0],this.getActivated().coords[1],0,0);
         }
         else{
-            let x=drawSigils(this.visibleSigils,scale);
+            let x=drawSigils(this.getVisibleSigils(),scale);
             for(let q of x){
                 d.appendChild(q);
                 sigilEls.push(q);
@@ -532,6 +553,7 @@ const c_horseman=new Card();
 const c_rock=new Card();
 const c_pack_rat=new Card();
 const c_undead_cat=new Card();
+const c_starvation=new Card();
 
 const a_bone_horn=new VanillaActivated();
 const a_disentomb=new VanillaActivated();

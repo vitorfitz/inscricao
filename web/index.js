@@ -426,7 +426,6 @@ s_quills.init([4,5],"Sharp Quills","Causa 1 de dano a quem a ataca.");
 s_quills.onReceivedAttack.push(new Listener(listen_me,async function(me,them){
     if(game.canBlock){
         them.damage(1,me);
-        await game.sleep(500);
     }
 }))
 
@@ -447,49 +446,67 @@ s_trifurcated.modifyTargets=function(me){
     }
 }
 
+async function tutor(cb){
+    let r;
+    let prom=new Promise((resolve)=>r=resolve);
+
+    if(game.deck.length>0){
+        tutorModal.style.visibility="visible";
+        tutorModal.style.opacity=1;
+        if(nuhuh.style.opacity!="0"){
+            tutorModal.style.backgroundColor="rgba(0, 0, 0, 0.5)";
+        }
+        else{
+            tutorModal.style.backgroundColor="";
+        }
+
+        for(let i=0; i<game.deck.length; i++){
+            if(i%6==0 && i!=0){
+                tutorDiv.appendChild(document.createElement("br"));
+            }
+            const card=game.deck[i];
+            const c=card.render(2);
+            tutorDiv.appendChild(c);
+
+            let closure_i=i;
+            c.addEventListener("click",function(){
+                tutorModal.style.opacity=0;
+                tutorModal.style.visibility="hidden";
+                cb(closure_i);
+
+                setTimeout(function(){
+                    tutorDiv.innerHTML="";
+                    tooltip.style.opacity=0;
+                    tooltip.style.visibility="hidden";
+                },150);
+
+                r();
+            });
+        }
+
+        await Promise.any([prom,game.abort.then(()=>{
+            tutorDiv.innerHTML="";
+            tooltip.style.opacity=0;
+            tooltip.style.visibility="hidden";
+        })]);
+    }
+}
+
 const tutorModal=document.querySelector("#tutorWrapper");
 const tutorDiv=document.querySelector("#tutor");
 s_tutor.init([3,6],"Hoarder","Ao jogar, compre uma carta do seu deck à sua escolha.");
 s_tutor.onCardPlayed.push(new Listener(listen_me, async function(me){
     if(me.side==game.myTurn){
-        if(game.deck.length>0){
-            console.log(blockActions);
-            await game.sleep(200);
-
-            tutorModal.style.visibility="visible";
-            tutorModal.style.opacity=1;
-            console.log(blockActions);
-
-            for(let i=0; i<game.deck.length; i++){
-                if(i%6==0 && i!=0){
-                    tutorDiv.appendChild(document.createElement("br"));
-                }
-                const card=game.deck[i];
-                const c=card.render(2);
-                tutorDiv.appendChild(c);
-
-                let closure_i=i;
-                c.addEventListener("click",function(){
-                    console.log(blockActions);
-                    tutorModal.style.opacity=0;
-                    tutorModal.style.visibility="hidden";
-                    game.addCardToHand(card);
-
-                    game.deck.splice(closure_i,1);
-                    shuffle(game.deck);
-                    drawDeckShadow(0,0,game.deck.length);
-
-                    setTimeout(function(){
-                        tutorDiv.innerHTML="";
-                        tooltip.style.opacity=0;
-                        tooltip.style.visibility="hidden";
-                    },150);
-                });
-            }
-        }
+        await game.sleep(200);
+        await tutor((i)=>{
+            game.addCardToHand(game.deck[i]);
+            game.deck.splice(i,1);
+            shuffle(game.deck);
+            drawDeckShadow(0,0,game.deck.length);
+        });
     }
     else{
-        if(game.oppCardsLeft>0) game.drawCard(0,me.side);
+        if(game.oppCardsLeft>0) await game.drawCard(0,me.side);
     }
 }))
 
@@ -789,9 +806,11 @@ a_gamble.init([2,0],1,energy,"Gamble","Define o ataque para um número aleatóri
     card.updateStat(0,card.attack);
 });
 
-function shuffle(array,k=array.length-1) {
+function shuffle(array,k=array.length-1,invert=false) {
     const end=array.length-1-k;
-    for (let i = array.length-1; i > end; i--) {
+    const s=invert? end : 0;
+
+    for (let i = array.length-1-s; i > end-s; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [array[i], array[j]] = [array[j], array[i]];
     }
@@ -902,10 +921,10 @@ class GameCard{
         }
 
         let sigils=[];
-        for(let i=0; i<c.sigils.length; i++){
-            sigils.push(new GameSigil(c.sigils[i]));
+        for(let i=0; i<c.getSigils().length; i++){
+            sigils.push(new GameSigil(c.getSigils()[i]));
         }
-        let activated=c.activated? new GameActivated(c.activated): null;
+        let activated=c.getActivated()? new GameActivated(c.getActivated()): null;
 
         const nc=new GameCard({
             card:c,
@@ -913,7 +932,7 @@ class GameCard{
             health,
             baseAttack:ba,
             baseHealth:bh,
-            unsaccable:unsac || c.hasSigil(s_cant_be_sacced),
+            unsaccable:(unsac && mode==mode_exp) || c.hasSigil(s_cant_be_sacced),
             sigils: sigils,
             activated: activated
         },mods);
@@ -1032,7 +1051,7 @@ class GameCard{
     async play(pos,faceDown=null){
         // console.log("<PLAYING "+this.debugInfo());
 
-        if(!hooked) spendResource(this.card.element,this.card.cost);
+        if(!hooked) spendResource(this.card.element,this.card.getCost());
         if(game.turn==game.myTurn){
             const ind=game.hand.indexOf(this);
             if(ind!=-1) game.hand.splice(ind,1);
@@ -1251,7 +1270,7 @@ class GameCard{
     }
 
     canPlay(){
-        return checkCost(this.card.element,this.card.cost);
+        return checkCost(this.card.element,this.card.getCost());
     }
 }
 
@@ -1320,13 +1339,21 @@ class Game{
         shuffle(this.deck);
         this.energy=[0,0];
         this.maxEnergy=[0,0];
-        this.manasLeft=[numManas,numManas];
+        if(this.manas){
+            this.manasLeft=[numManas,numManas];
+        }
+        else{
+            this.manasLeft=[0,0];
+            startCards+=startMana;
+            startMana=0;
+        }
         this.oppCardsLeft=oppCardsLeft;
         this.bones=[0,0];
         this.scales=0;
         this.startCards=startCards;
         this.startMana=startMana;
         this.totemEffects=[[],[]];
+        this.starvation=0;
 
         this.energize();
         this.hand=[];
@@ -1915,25 +1942,43 @@ class Game{
             if(this.deck.length==0 && this.manasLeft[this.turn]==0){
                 blockActions--;
                 updateBlockActions();
+                await game.addCardToHand(c_starvation,1-this.turn);
             }
             else{
                 const rect=myDecks.getBoundingClientRect();
                 drawOverlay.style.top=rect.top-nuhuhPadding+"px";
                 drawOverlay.style.left=rect.left-nuhuhPadding+"px";
                 nuhuh.style.transitionDuration="300ms";
-                nuhuh.style.opacity="0.5";
-                let rem=Math.min(game.cardsPerTurn,game.turnCount);
+                nuhuh.style.opacity="1";
 
+                lensIndex=-1;
+                if(run){
+                    for(let i=0; i<run.items.length; i++){
+                        if(run.items[i]==lensItem && run.usedItems.indexOf(i)==-1){
+                            lensIndex=i;
+                            break;
+                        }
+                    }
+                }
+                if(lensIndex!=-1){
+                    lensEl.style.display="";
+                    const rect=deckPiles[0][0].getBoundingClientRect();
+                    lensEl.style.top=rect.top+(112-lensEl.offsetHeight)+"px";
+                    lensEl.style.left=rect.left+"px";
+                }
+                else{
+                    lensEl.style.display="none";
+                }
+
+                let rem=Math.min(this.cardsPerTurn,this.turnCount,this.deck.length+this.manasLeft[this.turn]);
                 let that=this;
-                for(let i=0; i<2; i++){
+                const t=this.manas? 2: 1;
+                for(let i=0; i<t; i++){
                     async function myFunc(){
                         if(rem==0) return;
                         rem--;
-                        if(this.deck.length==0 && this.manasLeft[game.turn]==0){
-                            rem=0;
-                        }
                         if(rem==0){
-                            for(let j=0; j<2; j++){
+                            for(let j=0; j<t; j++){
                                 deckPiles[0][j].removeEventListener("click", myFunc);
                                 deckPiles[0][j].style.cursor="";
                             }
@@ -1952,6 +1997,17 @@ class Game{
                     deckPiles[0][i].addEventListener("click",myFunc.bind(this));
                     deckPiles[0][i].style.cursor="pointer";
                 }
+            }
+        }
+        else{
+            if(this.oppCardsLeft==0 && this.manasLeft[this.turn]==0){
+                await game.addCardToHand(c_starvation,1-this.turn,(sv)=>{
+                    game.starvation++;
+                    sv.attack=game.starvation;
+                    sv.health=game.starvation;
+                    sv.updateStat(0,sv.attack);
+                    sv.updateStat(1,sv.health);
+                });
             }
         }
     }

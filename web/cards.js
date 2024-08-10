@@ -89,8 +89,9 @@ c_horseman.init("Headless Horseman",13,5,5,bones,[s_flying,s_sidestep],null,[1,6
 c_mantis_god.init("Mantis God",1,1,1,blood,[s_trifurcated],null,[3,7],false);
 c_elk_fawn.init("Elk Fawn",1,1,1,blood,[s_elk_fawn],null,[6,3],false);
 c_dead_hand.init("Dead Hand",5,1,1,bones,[s_handy],null,[1,3],false);
-c_gambling.init("Gamblobot",3,0,1,energy,[a_gamble],null,[1,4],false);
+c_gambling.init("Gamblobot",3,0,1,energy,[],a_gamble,[1,4],false);
 
-c_rock.init("Boulder",0,0,3,bones,[s_cant_be_sacced],null,[6,16],false);
+c_rock.init("Boulder",0,0,5,bones,[s_cant_be_sacced],null,[6,16],false);
 c_pack_rat.init("Pack Rat",2,2,3,blood,[s_packin],null,[7,16],false);
 c_undead_cat.init("Undead Cat",1,3,6,blood,[],null,[1,2],false);
+c_starvation.init("Starvation",0,69,69,blood,[s_extra_attack],null,[8,7],false);

@@ -2,7 +2,7 @@
 
 let run;
 class Run{
-    constructor(myTurn,tippingPoint=5,cardsPerTurn=1,lifeTotal=30,lanes=4){
+    constructor(myTurn,tippingPoint=5,cardsPerTurn=1,lifeTotal=25,lanes=4){
         this.tippingPoint=tippingPoint;
         this.cardsPerTurn=cardsPerTurn;
         this.lifeTotal=lifeTotal;
@@ -38,12 +38,12 @@ class Run{
     getMapLen(){
         const dif=run.life[0]-run.life[1];
         if(dif>=20){
-            return 1;
+            return 0;
         }
-        else if(dif<=-10){
-            return 3;
+        else if(run.life[0]==run.lifeTotal && dif==0 || dif<=-10){
+            return 2;
         }
-        else return 2;
+        else return 1;
     }
 }
 
@@ -114,6 +114,7 @@ class ModdedCard{
 const cardSelect=document.querySelector("#card_choice");
 function newRun(otherJSON,configs){
     run=new Run(otherJSON.myTurn,configs.tippingPoint,configs.cardsPerTurn,configs.lifeTotal);
+    mode=mode_exp;
     run.freshStart();
     updateHPs();
     updateDeck(1);
@@ -215,6 +216,7 @@ function presentCards(){
 function stopPicking(delayRemoval=false){
     presentedCards=[];
     halt=false;
+    trialMode=false;
     fader.classList.add("fade");
     setTimeout(function(){
         fader.classList.remove("fade");
@@ -246,22 +248,38 @@ let generate;
 let rerolls;
 let trialMode=false;
 const rerollEl=document.querySelector("#reroll");
+const rerollArrow=rerollEl.querySelector("#arrow");
+const rerollDoor=rerollEl.querySelector("#door");
 const rerollSpan=rerollEl.querySelector("span");
 
 function updateReroll(){
     if(rerolls==0){
-        rerollEl.style.display="none";
+        if(run.manas[0]!=-1){
+            rerollArrow.style.display="none";
+            rerollDoor.style.display="";
+            rerollSpan.textContent="Sair";
+        }  
+        else{
+            rerollEl.style.display="none";
+        }
     }
     else{
         rerollEl.style.display="";
         rerollSpan.textContent="x"+rerolls;
+        rerollArrow.style.display="";
+        rerollDoor.style.display="none";
     }
 }
 
 rerollEl.addEventListener("click",function(){
-    presentCards();
-    rerolls--;
-    updateReroll();
+    if(rerolls==0){
+        stopPicking();
+    }
+    else{
+        presentCards();
+        rerolls--;
+        updateReroll();
+    }
 });
 
 function cardPick(n,rr=0,gen=randomCards){
@@ -750,7 +768,7 @@ function buffedCards(){
         for(let j of sCopy){
             const together=[j,...picks[i].sigils];
             if(checkAllowed(together)){
-                const ev=correctPE((new PowerEstimate(picks[i].attack,picks[i].health,together)).calc(),picks[i].element,picks[i].cost,picks[i].sigils);
+                const ev=correctPE((new PowerEstimate(picks[i].attack,picks[i].health,together)).calc(),picks[i].element,picks[i].cost,together);
                 if(ev>=minThresh && ev<=maxThresh){
                     for(let i=0; i<numMono; i++){
                         combos.push([j]);
@@ -766,7 +784,7 @@ function buffedCards(){
             const combo=sCopy.slice(sCopy.length-2);
             const together=[...combo,...picks[i].sigils];
             if(checkAllowed(together)){
-                const ev=correctPE((new PowerEstimate(picks[i].attack,picks[i].health,together)).calc(),picks[i].element,picks[i].cost,picks[i].sigils);
+                const ev=correctPE((new PowerEstimate(picks[i].attack,picks[i].health,together)).calc(),picks[i].element,picks[i].cost,together);
                 if(ev>=minThresh && ev<=maxThresh){
                     combos.push(combo); 
                     if(combo.indexOf(s_brittle)!=-1) {for(let i=0; i<19; i++) combos.push(combo)};
@@ -825,7 +843,7 @@ const cardNode=new NodeType("Card Choice","Adicione 2 cartas ao seu deck.","pick
     fader.classList.add("fade");
     await new Promise((resolve)=>setTimeout(function(){
         fader.classList.remove("fade");
-        cardPick(2,3);
+        cardPick(2,5);
         resolve();
     },fadeTimer));
 },()=>4);
@@ -1006,7 +1024,7 @@ async function renderMap(len=2,xSpacing=150,ySpacing=115,conns=3){
     const mm=[[[],[],[]],...genMapModel(len,width,conns),[]];
 
     for(let i=0; i<width; i++){
-        if(mm[1][i].length>0){
+        if(len==0 || mm[1][i].length>0){
             mm[0][1].push(i);
         }
     }
@@ -1233,10 +1251,10 @@ function deckViewerEl(dc){
     ncw.appendChild(closeBtn);
     if(!dc.inUse) ncw.classList.add("unused");
 
-    ncw.addEventListener("click",function(){
-        ncw.classList.toggle("unused");
-        dc.inUse=!dc.inUse;
-    });
+    // ncw.addEventListener("click",function(){
+    //     ncw.classList.toggle("unused");
+    //     dc.inUse=!dc.inUse;
+    // });
     return ncw;
 }
 
@@ -1881,6 +1899,8 @@ function letsBuildACard(){
             updateSigils();
         });
     }
+
+    updateSigils();
 }
 
 const campfireDiv=document.querySelector("#campfire");

@@ -51,7 +51,7 @@ button{
 
 #decks>*{
     border: 2px solid #4f4f4f;
-    width: 120px;
+    width: 150px;
     cursor: pointer;
     position: relative;
 }
@@ -82,7 +82,14 @@ button{
     padding: 2px 5px;
 }
 #decks>*>:nth-child(2){
-    text-align: right;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+#decks>*>:nth-child(2)>:first-child{
+    font-size: 14px;
+    font-style: italic;
+    color:#7f7f7f;
 }
 
 #decks .deckOpts{
@@ -336,11 +343,31 @@ button{
 }
 
 #edit header>:last-child{
-    text-align: right;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 #edit header>*{
     padding: 4px 8px;
+}
+
+#mode_parent{
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+#mode{
+    font-style: italic;
+    color: #6f6f6f;
+    font-size: 15px;
+}
+
+#mode_switch{
+    transform: rotate(10deg);
+    filter: invert(40%);
+    margin-left: 8px;
 }
 
 #edit h3{
@@ -353,6 +380,13 @@ button{
 #edit>*{
     padding: 40px 50px;
     padding-bottom: 15px;
+}
+
+#secondary{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 40px;
 }
 
 #wrap_cid{
@@ -419,15 +453,30 @@ button{
     content: "×";
 }
 
-#cards_in_deck>*>:nth-child(2){
+.cnt{
+    position: absolute;
+    display: none;
+    height: 18px;
+    top:0;
+    left:0;
+    translate:-50% -50%;
+    background-color: #281c48;
+    color:#91bccb;
+    font-size: 14px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    z-index: 2;
+    padding: 0 4px;
+}
+
+#cards_in_deck>*>:nth-child(3){
     z-index: 1;
     position: relative;
 }
 
-#cards_in_deck>*>:nth-child(3){
+#cards_in_deck>*>:nth-child(n+4){
     position: absolute !important;
-    top: -7px;
-    left: -7px;
 }
 
 .size{
@@ -740,7 +789,7 @@ button{
     padding-right: 32px;
 }
 #pregame>*{
-    width: 314px;
+    width: 364px;
 }
 #pregame .close{
     margin-top: -6px;
@@ -750,10 +799,13 @@ button{
     cursor: pointer;
 }
 #pregame h2 span:not(:last-of-type){
-    margin-right: 35px;
+    margin-right: 20px;
 }
 #pregame h2 span:not(.selectedAct){
-    opacity: 0.33;
+    opacity: 0.4;
+}
+.selectedAct{
+    color: #203040;
 }
 #pregame img{
     transform: rotate(-15deg);
@@ -1476,6 +1528,31 @@ img{
     pointer-events: none;
     opacity: 0;
     transition: opacity 300ms linear;
+}
+
+#floatingLens{
+    transition: opacity 300ms linear;
+    position: absolute;
+    z-index: 5;
+    cursor: pointer;
+    pointer-events: all;
+    background-color: rgba(31,63,95,0.2);
+    width: 84px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0f181f;
+    font-family: sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#floatingLens img{
+    width: 18px;
+    transform: rotate(25deg);
+    filter: brightness(0%);
+    margin-right:6px;
 }
 
 .nuhuh>canvas{

@@ -147,7 +147,12 @@
                     </button></p>
                 </div>
             </div>
-            <div id="nuhuh" class="nuhuh"></div>
+            <div id="nuhuh" class="nuhuh">
+                <div id="floatingLens">
+                    <img src="items/lens.webp">
+                    <span>Usar</span>
+                </div>
+            </div>
             <div id="nuhuhSniper" class="nuhuh"></div>
             <div id="fullShadow" class="nuhuh"></div>
         </div>
@@ -163,17 +168,18 @@
                 <div style="padding: 0;">
                     <div id="act_sel">
                         <h2 style="font-size: 20px;">
-                            <span>Ato 1</span>
-                            <span class="selectedAct">Ato 2</span>
+                            <span>Classic</span>
+                            <span class="selectedAct">Extended</span>
+                            <span>Draft</span>
                             <canvas class="close ret" height="34" width="34" style="width: 26px;"></canvas>
                         </h2>
                     </div>
                     <div id="configs" class="a2">
                         <p>Nome da sala: <input id="name" style="width: 80px;"></p>
                         <p class="a2">Seu deck: <span class="deckSel"></span> </p>
-                        <p class="a1">Vida total: <input id="hp" type="number" value="30" min="1" max="50" style="width: 40px;"> </p>
-                        <p>Limite da balança: <input id="sc" type="number" value="8" min="1" max="16" style="width: 40px;"> </p>
-                        <p>Cartas por turno: <input id="cpt" type="number" value="2" min="1" max="3" style="width: 40px;"> </p>
+                        <p class="a1">Vida total: <input id="hp" type="number" value="25" min="1" max="50" style="width: 40px;"> </p>
+                        <p>Limite da balança: <input id="sc" type="number" value="8" data-latent="5" min="1" max="16" style="width: 40px;"> </p>
+                        <p>Cartas por turno: <input id="cpt" type="number" value="2" data-latent="1" min="1" max="3" style="width: 40px;"> </p>
                         <button class="play">
                             <span id="okSpan">Criar Partida</span>
                             <span id="waitSpan">Esperando...</span>
@@ -213,11 +219,17 @@
                                     <h3 contenteditable="true">Deck vazio</h3>
                                     <img src="icons/pencil.svg" style="cursor: pointer; height:1em">
                                 </div>
-                                <div class="size">0/20</div>
+                                <div id="size_parent">
+                                    <div id="mode_parent">
+                                        <span id="mode">Extended</span>
+                                        <img src="icons/circle-arrow.svg" width="16" id="mode_switch">
+                                    </div>
+                                    <div class="size">0/20</div>
+                                </div>
                             </header>
                             <img src="icons/save.svg" width="30" id="save">
                         </div>
-                        <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 40px;">
+                        <div id="secondary">
                             Deck secundário:&nbsp;
                             <div id="sec">
                                 <img class="caret" src="icons/caret.svg">
@@ -276,7 +288,8 @@
                 <div id="pick3">
                     <div id="ccShadow" class="nuhuh"></div>
                     <div id="reroll">
-                        <img src="icons/circle-arrow.svg" width="40">
+                        <img src="icons/circle-arrow.svg" height="43" id="arrow">
+                        <img src="icons/door.svg" height="43" id="door" style="display:none; margin-right:10px; margin-left:-5px">
                         <span>x3</span>
                     </div>
                     <div class="cardSpace"></div>

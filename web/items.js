@@ -25,14 +25,20 @@ class Item{
     }
 }
 
-const rockItem=new Item("Boulder in a Bottle","Obtenha uma Pedra 0/3.","boulder.webp",()=>1,async function(i){
+const rockItem=new Item("Boulder in a Bottle","Obtenha uma Pedra 0/5.","boulder.webp",()=>1,async function(i){
     await consumeItem(i);
     await game.addCardToHand(c_rock,game.turn);
 });
 
-const pliersItem=new Item("Pliers","Causa 1 de dano ao oponente.","pliers.webp",()=>1,async function(i){
+const sqItem=new Item("Squirrel in a Bottle","Obtenha um Esquilo 0/1","squirrel.webp",()=>1,async function(i){
     await consumeItem(i);
-    await game.tiltScales(1,null,null);
+    await game.addCardToHand(c_squirrel,game.turn);
+});
+
+
+const pliersItem=new Item("Pliers","Causa 2 de dano ao oponente.","pliers.webp",()=>1,async function(i){
+    await consumeItem(i);
+    await game.tiltScales(2,null,null);
     game.checkScales();
 });
 
@@ -120,85 +126,44 @@ function maintainOppItems(search=run.revealedItems){
     return ind;
 }
 
-const lensItem=new Item("Magpie's Lens","Espie secretamente a mão e os itens do oponente.","lens.webp",()=>1,
+let lensIndex;
+const lensEl=document.querySelector("#floatingLens")
+lensEl.addEventListener("click",async function(){
+    if(game.turn==game.myTurn && blockActions==1 && lensIndex!=-1){
+        let newLI=-1;
+        for(let i=0; i<run.items.length; i++){
+            if(i!=lensIndex && run.items[i]==lensItem && run.usedItems.indexOf(i)==-1){
+                newLI=i;
+                break;
+            }
+        }
+        if(newLI==-1){
+            lensEl.style.opacity=0;
+            setTimeout(function(){
+                lensEl.style.opacity=1;
+                lensEl.style.display="none";
+            },300);
+        }
+
+        blockActions++;
+        updateBlockActions();
+        await lensItem.myFunc(lensIndex);
+        blockActions--;
+        updateBlockActions();
+
+        lensIndex=newLI;
+    }
+});
+
+const lensItem=new Item("Magpie's Lens","Coloque uma carta no topo do seu deck.","lens.webp",()=>99,
 null,
 async function(i){
-    sendMsg(codeShowMe);
-    let consumeProm=consumeItem(i);
-    let msgProm=getNextMsg();
-    msgProm.then((msg)=>{
-        const firstAndRest=msg.substring(2).split("\n");
-        let lines=firstAndRest.slice(1);
-        const oppCards=hands[1].children;
-
-        for(let i=0; i<lines.length; i++){
-            if(oppCards[i].classList.contains("revealed")){
-                continue;
-            }
-
-            const spl1=lines[i].split("/",2);
-            const spl2=spl1[0].split(" ");
-            let atk=parseInt(spl2[0]),hp=parseInt(spl2[1]),id=parseInt(spl2[2]),unsac=spl2[3]=="1";
-            let card;
-            if(id==-1){
-                let cost=parseInt(spl2[4]);
-                let element=parseInt(spl2[5]);
-                let customSigs=[];
-                for(let i=6; i<spl2.length; i++){
-                    customSigs.push(parseInt(spl2[i]));
-                }
-                card=new Card();
-                card.init("Dr Fire Esq.",cost,atk,hp,element,customSigs,null,[5,16],false,true);
-            }
-            else{
-                card=allCards[id];
-            }
-
-            const cardDiv=card.renderAlsoReturnCtx(2,unsac,atk,hp).div;
-            if(spl1.length>1){
-                let extraSigs=[];
-                const spl3=spl1[1].split(" ");
-                for(let j=0; j<spl3.length; j++){
-                    extraSigs.push(allSigils[parseInt(spl3[j])]);
-                }
-                addDrip(extraSigs,cardDiv,2);
-            }
-
-            const ref=oppCards[i];
-            const cardDivDiv=document.createElement("div");
-            cardDivDiv.className="revealed anim";
-            cardDivDiv.appendChild(cardDiv);
-            hands[1].replaceChild(cardDivDiv,ref);
-            cardDivDiv.prepend(ref);
-            setTimeout(function(){
-                cardDivDiv.classList.remove("anim");
-            },500);
-        }
-
-        const ric=[...run.oppUnusedItems];
-        if(firstAndRest[0]!=""){
-            const itemCodes=firstAndRest[0].split(" ");
-            for(let i=0; i<itemCodes.length; i++){
-                const code=parseInt(itemCodes[i]);
-                const ind=ric.indexOf(code);
-                if(ind==-1){
-                    let ind=maintainOppItems(ric);
-                    run.revealedItems.push(code);
-                    run.oppUnusedItems.push(code);
-
-                    ric[ind]=null;
-                    const el=sigilElement(itemTypes[code],"img");
-                    el.src=itemTypes[code].file.src;
-                    theirItems[ind].innerHTML="";
-                    theirItems[ind].appendChild(el);
-                }
-                else{
-                    ric[ind]=null;
-                }
-            }
-        }
-    });
-    await Promise.all([msgProm,consumeProm]);
+    await Promise.all([consumeItem(i),tutor((i)=>{
+        let temp=game.deck[i];
+        game.deck[i]=game.deck[game.deck.length-1];
+        game.deck[game.deck.length-1]=temp;
+        shuffle(game.deck,game.deck.length-2,true);
+    }).then(()=>deckPiles[0][0].click())]);
 });
 
 function removeListeners(card){

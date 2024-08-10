@@ -8,7 +8,7 @@ c_bolthound.init_orig(6,2,2);
 c_explode_bot.init_orig(2,1,1,[s_explosive10]);
 c_mrs_bomb.init_orig(3,1,2);
 c_bonehound.init_orig(7,2,3);
-c_bullfrog.init_orig(1,1,3);
+c_bullfrog.init_orig(1,1,2);
 c_cat.init_orig(1,0,1,[s_freer_sac]);
 c_pharaoh.init_orig(6,0,1);
 c_draugr.init_orig(1,0,2);
@@ -48,11 +48,10 @@ c_wolf.init_orig(2,3,2);
 c_zombie.init_orig(2,1,1);
 c_black_goat.init_orig(1,0,1);
 c_mantis.init_orig(1,1,1);
-c_skunk.init_orig(1,0,4);
 c_bone_horn.init_orig(3,1,1);
 c_tomb_raider.init_orig(0,0,2);
 c_plasma.init_orig(2,0,3);
-c_bone_heap.init_orig(0,0,1,[a_enlarge_unn]);
+c_bone_heap.init_orig(0,0,1,[],a_enlarge_unn);
 c_m3atb0t.init_orig(2,0,1);
 c_horseman.init_orig(13,5,5);
 
@@ -62,3 +61,6 @@ c_elk_fawn.init_orig();
 c_mantis_god.init_orig();
 c_gambling.init_orig();
 c_dead_hand.init_orig();
+
+c_undead_cat.init_orig_no_id();
+c_starvation.init_orig_no_id();
