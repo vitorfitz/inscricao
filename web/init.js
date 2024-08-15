@@ -124,8 +124,8 @@ class SFrozen extends Sigil{
 }
 
 class BuffSigil extends Sigil{
-    init(coords,buff,name=null,desc=null,initData=function(card,sigil){}){
-        super.init(coords,name,desc,initData);
+    init(coords,buff,name=null,desc=null,initData=function(card,sigil){},hidden=false){
+        super.init(coords,name,desc,initData,hidden);
         this.onCardMoved.push(new Listener(listen_me,async function(me,old_pos,_,memory){
             if(old_pos!=null){
                 buff(-1,me,old_pos,memory);
@@ -406,7 +406,34 @@ class Card{
     }
 }
 
+const cardWidth=42,cardHeight=56;
+function calcCenterX(width){
+    return (cardWidth-width)/2;
+}
+const weirdWidth=29;
+const weirdAlignX=calcCenterX(weirdWidth);
+
 function drawSigils(visibleSigils,scale){
+    const ms=[s_sapphire,s_ruby,s_emerald];
+    let allMoxen=true;
+    for(let i=0; i<ms.length; i++){
+        if(visibleSigils.indexOf(ms[i])==-1){
+            allMoxen=false;
+            break;
+        }
+    }
+    if(allMoxen){
+        const tooltipEl=document.createElement("canvas");
+        tooltipEl.className="ttTrigger";
+        tooltipEl.width=weirdWidth*scale;
+        tooltipEl.height=i_sigils.dims[1]*scale;
+        tooltipEl.style.left=weirdAlignX*scale+"px";
+        tooltipEl.style.top=sig_alignY*scale+"px";
+            
+        i_sigils.draw(tooltipEl.getContext("2d"),scale,5,3,0,0,weirdWidth);
+        return[tooltipEl,tooltipEl,tooltipEl];
+    }
+    
     let alignX=visibleSigils.length==2? sig_alignX2: sig_alignX;
     let els=[];
     for(let i=0; i<visibleSigils.length; i++){
@@ -434,7 +461,6 @@ const s_undying=new Sigil();
 const s_ouroboros=new Sigil();
 const s_sq_spawner=new SSpawner();
 const s_rabbit=new Sigil();
-// const s_elk_fawn=new SFledgling();
 const s_wolf_cub=new SFledgling();
 const s_raven_egg=new SFledgling();
 const s_sarc=new SFledgling();
@@ -552,6 +578,7 @@ const c_mirror_tent=new Card();
 const c_m3atb0t=new Card();
 const c_hand_tent=new Card();
 const c_horseman=new Card();
+const c_pronghorn=new Card();
 
 const c_rock=new Card();
 const c_pack_rat=new Card();
@@ -570,10 +597,48 @@ const c_gambling=new Card();
 const c_sentry=new Card();
 const c_shutterbug=new Card();
 
+const c_bleen=new Card();
+const c_goranj=new Card();
+const c_orlu=new Card();
+const c_m_bleen=new Card();
+const c_m_goranj=new Card();
+const c_m_orlu=new Card();
+const c_green=new Card();
+const c_orange=new Card();
+const c_blue=new Card();
+const c_pupil=new Card();
+const c_gourmage=new Card();
+const c_green_mage=new Card();
+const c_junior_sage=new Card();
+const c_muscle_mage=new Card();
+const c_stim_mage=new Card();
+const c_mage_knight=new Card();
+const c_orange_mage=new Card();
+const c_practice_wizard=new Card();
+const c_ruby_golem=new Card();
+const c_blue_mage=new Card();
+const c_force_mage=new Card();
+const c_gem_fiend=new Card();
+const c_hover_mage=new Card();
+const c_skelemagus=new Card();
+const c_mox_module=new Card();
+
 const a_enlarge_unn=new VanillaActivated();
+const a_stimulation=new VanillaActivated();
 const a_gamble=new VanillaActivated();
 const s_handy=new Sigil();
 const s_elk_fawn=new SFledgling();
 const s_freer_sac=new Sigil();
 const s_explosive10=new Sigil();
 const s_sentry=new Sigil();
+const s_sapphire=new Sigil();
+const s_emerald=new Sigil();
+const s_ruby=new Sigil();
+const a_potofgreed=new VanillaActivated();
+const s_dependant=new Sigil();
+const s_looter=new Sigil();
+const s_repulsive=new BuffSigil();
+const s_gem_anim=new Sigil();
+const s_ruby_heart=new SFrozen();
+const s_op_draw=new Sigil();
+const s_green_gems=new StatSigil();

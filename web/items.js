@@ -36,9 +36,9 @@ const sqItem=new Item("Squirrel in a Bottle","Obtenha um Esquilo 0/1","squirrel.
 });
 
 
-const pliersItem=new Item("Pliers","Causa 2 de dano ao oponente.","pliers.webp",()=>1,async function(i){
+const pliersItem=new Item("Pliers","Causa 1 de dano ao oponente.","pliers.webp",()=>1,async function(i){
     await consumeItem(i);
-    await game.tiltScales(2,null,null);
+    await game.tiltScales(1,null,null);
     game.checkScales();
 });
 
@@ -154,7 +154,7 @@ lensEl.addEventListener("click",async function(){
     }
 });
 
-const lensItem=new Item("Magpie's Lens","Coloque uma carta no topo do seu deck.","lens.webp",()=>99,
+const lensItem=new Item("Magpie's Lens","Coloque uma carta no topo do seu deck.","lens.webp",()=>1,
 null,
 async function(i){
     await Promise.all([consumeItem(i),tutor((i)=>{
