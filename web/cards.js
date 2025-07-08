@@ -31,7 +31,6 @@ c_kingfisher.init("Kingfisher",1,1,1,blood,[s_flying,s_aquatic],null,[6,6]);
 c_squirrel_ball.init("Squirrel Ball",1,1,2,blood,[s_sq_spawner],null,[8,6]);
 c_l33pbot.init("L33pbot",1,0,2,energy,[s_reach],null,[0,7]);
 c_magpie.init("Magpie",3,1,1,blood,[s_flying,s_tutor],null,[2,7]);
-// mantis god
 c_49er.init("49er",2,1,1,energy,[s_sidestep],null,[2,8]);
 c_mole.init("Mole",1,0,4,blood,[s_burrow],null,[3,8]);
 c_mole_man.init("Mole Man",1,0,4,blood,[s_burrow,s_reach],null,[4,8]);
@@ -50,7 +49,6 @@ c_thicc.init("Thick Droid",3,1,3,energy,[],null,[8,11]);
 c_477.init("Urayuli",4,7,7,blood,[],null,[1,12]);
 c_warren.init("Warren",1,0,4,blood,[s_rabbit],null,[2,12]);
 c_wolf.init("Wolf",2,3,2,blood,[],null,[3,12]);
-// wolf cub
 c_zombie.init("Zombie",1,1,2,bones,[],null,[5,12]);
 c_cockroach.init("Cockroach",3,1,1,bones,[s_undying],null,[8,12]);
 c_bat.init("Bat",3,2,1,bones,[s_flying],null,[0,13]);
@@ -59,7 +57,6 @@ c_dam.init("Dam",0,0,2,bones,[s_reach,s_cant_be_sacced],null,[2,13],false);
 c_bee.init("Bee",0,1,1,bones,[s_flying],null,[3,13],false);
 c_beehive.init("Beehive",1,0,3,blood,[s_beehive],null,[4,13]);
 c_black_goat.init("Black Goat",2,0,5,blood,[s_worthy],null,[5,13]);
-// child 13
 c_daus.init("The Daus",2,2,2,blood,[s_bells],null,[7,13]);
 c_bell.init("Bell",0,0,1,blood,[s_cant_be_sacced],null,[8,13],false);
 c_dire_wolf.init("Dire Wolf",3,2,3,blood,[s_extra_attack],null,[1,14]);
@@ -71,13 +68,11 @@ c_moose_buck.init("Moose Buck",3,3,7,blood,[s_push],null,[6,14]);
 c_skunk.init("Skunk",1,0,4,blood,[s_stinky],null,[7,14]);
 c_great_white.init("Great White",3,4,2,blood,[s_aquatic],null,[8,14]);
 c_porcupine.init("Porcupine",1,1,3,blood,[s_quills],null,[0,15]);
-// pronghorn
 c_rattler.init("Rattler",4,3,2,bones,[],null,[2,15]);
 c_river_snapper.init("River Snapper",2,1,9,blood,[],null,[3,15]);
 c_sparrow.init("Sparrow",1,1,3,blood,[s_flying],null,[4,15]);
-// strange larva
-c_vulture.init("Turkey Vulture",7,3,4,bones,[s_flying],null,[8,15]);
-c_bone_horn.init("Bone Lord's Horn",6,1,1,bones,[],a_bone_horn,[4,1]);
+c_vulture.init("Turkey Vulture",8,3,4,bones,[s_flying],null,[8,15]);
+c_bone_horn.init("Bone Lord's Horn",7,1,1,bones,[],a_bone_horn,[4,1]);
 c_tomb_raider.init("Tomb Robber",1,0,2,bones,[],a_disentomb,[0,12]);
 c_plasma.init("Plasma Jimmy",2,0,2,energy,[],a_energy_gun,[0,4]);
 c_bone_heap.init("Bone Heap",1,0,2,bones,[],a_enlarge,[5,1]);
@@ -85,11 +80,40 @@ c_hand_tent.init("Hand Tentacle",2,0,4,blood,[s_hand],null,[8,3]);
 c_mirror_tent.init("Mirror Tentacle",1,0,4,blood,[s_mirror],null,[8,4]);
 c_m3atb0t.init("M3atb0t",5,0,1,energy,[s_worthy],null,[0,8]);
 c_horseman.init("Headless Horseman",13,5,5,bones,[s_flying,s_sidestep],null,[1,6]);
+c_dead_hand.init("Dead Hand",5,1,1,bones,[s_handy],null,[1,3]);
+c_pronghorn.init("Pronghorn",2,1,4,blood,[s_sidestep,s_bifurcated],null,[1,15]);
 
 c_mantis_god.init("Mantis God",1,1,1,blood,[s_trifurcated],null,[3,7],false);
 c_elk_fawn.init("Elk Fawn",1,1,1,blood,[s_elk_fawn],null,[6,3],false);
-c_dead_hand.init("Dead Hand",5,1,1,bones,[s_handy],null,[1,3],false);
 c_gambling.init("Gamblobot",3,0,1,energy,[],a_gamble,[1,4],false);
+c_sentry.init("Sentry Drone",1,0,1,energy,[s_sentry],null,[4,11],false);
+c_shutterbug.init("Shutterbug",5,1,1,energy,[s_death_touch,s_sentry],null,[6,11],false);
+
+c_bleen.init("Bleene's Mox",0,0,2,mox,[s_sapphire,s_emerald,s_cant_be_sacced],null,[5,8],false);
+c_goranj.init("Goranj's Mox",0,0,2,mox,[s_emerald,s_ruby,s_cant_be_sacced],null,[6,8],false);
+c_orlu.init("Orlu's Mox",0,0,2,mox,[s_ruby,s_sapphire,s_cant_be_sacced],null,[7,8],false);
+c_m_bleen.init("Master Bleene",0b101,0,4,mox,[],a_potofgreed,[5,7],false);
+c_m_goranj.init("Master Goranj",0b011,2,6,mox,[s_dependant],null,[6,7],false);
+c_m_orlu.init("Master Orlu",0b110,1,1,mox,[s_flying,s_looter],null,[7,7],false);
+c_green.init("Emerald Mox",0,0,1,mox,[s_emerald,s_cant_be_sacced],null,[0,9],false);
+c_orange.init("Ruby Mox",0,0,1,mox,[s_ruby,s_cant_be_sacced],null,[1,9],false);
+c_blue.init("Sapphire Mox",0,0,1,mox,[s_sapphire,s_cant_be_sacced],null,[2,9],false);
+c_pupil.init("Mage Pupil",0,1,1,mox,[s_dependant],null,[4,10],false);
+c_gourmage.init("Gourmage",0b001,0,2,mox,[],a_enlarge_unn,[4,7],false);
+c_green_mage.init("Green Mage",0b001,0,2,mox,[s_green_gems],null,[5,5],false);
+c_junior_sage.init("Junior Sage",0b001,1,2,mox,[],null,[5,6],false);
+c_muscle_mage.init("Muscle Mage",0b001,1,1,mox,[s_push],null,[5,9],false);
+c_stim_mage.init("Stim Mage",0b001,0,2,mox,[],a_stimulation,[8,9],false);
+c_mage_knight.init("Mage Knight",0b010,1,3,mox,[s_dependant],null,[1,7],false);
+c_orange_mage.init("Orange Mage",0b010,0,1,mox,[s_gem_anim],null,[1,10],false);
+c_practice_wizard.init("Practice Wizard",0b010,0,3,mox,[],null,[3,10],false);
+c_ruby_golem.init("Ruby Golem",0b010,1,1,mox,[s_ruby_heart],null,[1,11],false);
+c_blue_mage.init("Blue Mage",0b100,0,1,mox,[s_op_draw],null,[6,0],false);
+c_force_mage.init("Force Mage",0b100,0,1,mox,[s_repulsive],null,[6,4],false);
+c_gem_fiend.init("Gem Fiend",0b100,2,1,mox,[s_dependant],null,[0,5],false);
+c_hover_mage.init("Hover Mage",0b100,1,1,mox,[s_flying],null,[5,4],false);
+c_skelemagus.init("Skelemagus",2,4,1,bones,[s_brittle,s_dependant],null,[8,0],false);
+c_mox_module.init("Mox Module",3,0,3,energy,[s_sapphire,s_ruby,s_emerald],null,[3,9],false);
 
 c_rock.init("Boulder",0,0,5,bones,[s_cant_be_sacced],null,[6,16],false);
 c_pack_rat.init("Pack Rat",2,2,3,blood,[s_packin],null,[7,16],false);

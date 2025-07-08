@@ -36,6 +36,7 @@ class Run{
     }
 
     getMapLen(){
+        return 1;
         const dif=run.life[0]-run.life[1];
         if(dif>=20){
             return 0;
@@ -258,6 +259,7 @@ function updateReroll(){
             rerollArrow.style.display="none";
             rerollDoor.style.display="";
             rerollSpan.textContent="Sair";
+            rerollEl.style.display="";
         }  
         else{
             rerollEl.style.display="none";
@@ -453,8 +455,8 @@ let sigilEstimates={};
         }
     }};
     se[s_digger.id]={mod:(pe)=>{
-        pe.additive+=0.45;
-        pe.presence+=0.3;
+        pe.additive+=0.5;
+        pe.presence+=0.2;
     }};
     se[s_brittle.id]={uselessAt0: true,mod:(pe)=>{
         if(pe.attack>0) pe.defense=0;
@@ -484,15 +486,15 @@ let sigilEstimates={};
         if(has(pe,s_sidestep) || has(pe,s_push) || has(pe,s_sq_spawner) || has(pe,s_skele_spawner) || has(pe,s_burrow) || has(pe,s_guardian)) pe.additive+=Math.max(0,Math.min(2.2,pe.dt-0.333)*pe.defense*0.2);
     }};
     se[s_double_death.id]={mod:(pe)=>{
-        pe.additiveExt+=0.9;
+        pe.additiveExt+=3.9;
         pe.presence+=0.7;
     }};
     se[s_fecundity.id]={ext:(pe)=>{
-        pe.additiveExt+=5;
+        pe.additiveExt+=Math.max(5,3+6.5/pe.res);
     }};
     se[s_undying.id]={ext:(pe)=>{
-        if(has(pe,s_worthy)) pe.additiveExt+=5;
-        else if(!has(pe,s_fecundity)) pe.additiveExt+=5*(0.87**((has(pe,s_aquatic)? 2: 1)*pe.defense+1));
+        if(has(pe,s_worthy)) pe.additiveExt+=Math.max(5,3+6.5/pe.res);
+        else if(!has(pe,s_fecundity)) pe.additiveExt+=Math.max(1.5+6.5/pe.res,Math.min(pe.defense*0.3,1)+5*(0.77**((has(pe,s_aquatic)? 2: 1)*(pe.defense-0.5)+1)));
         else pe.additiveExt+=0.5;
     }};
     se[s_sq_spawner.id]={mod:(pe)=>{
@@ -531,11 +533,11 @@ let sigilEstimates={};
     se[s_guardian.id]={};
     se[s_free_sac.id]={mod:(pe)=>{
         if(pe.hp>1){
-            const f=1-1/2**(pe.hp)
+            const f=1-1/2**(pe.hp);
             if(has(pe,s_worthy)){
                 pe.additiveExt+=11.25*f;
-                pe.presence+=2;
-                pe.defense/=2;
+                pe.presence+=4;
+                pe.defense/=4;
             }
             else{
                 pe.additiveExt+=1.6*f+pe.hp*0.4;
@@ -569,7 +571,7 @@ let sigilEstimates={};
         }
     }};
     se[s_worthy.id]={ext:(pe)=>{
-        if(!(has(pe,s_free_sac) && pe.hp>1)) pe.res+=6.5/2**((pe.res-pe.defense/pe.res*2)/6.5);
+        if(!(has(pe,s_free_sac) && pe.hp>1)) pe.res+=6.5/2**((pe.res-pe.hp/pe.res*2)/6.5)+(pe.hp>5? 0: Math.max(0,((5-pe.hp)**1.5)*0.15));
     }};
     se[s_tutor.id]={boost:(pe)=>{
         pe.additiveExt+=6;
@@ -869,6 +871,10 @@ const battleNode=new NodeType("Batalha",null,"battle.webp",function(){
         },fadeTimer));
 
         if(game) await game.over;
+        if((run.life[0]<=3) != (run.life[1]<=3)){
+            if(run.life[0]<=3) run.myTurn=0;
+            else if(run.life[1]<=3) run.myTurn=1;
+        }
         game=new Game(run.myTurn==0? run.manas: [run.manas[1],run.manas[0]],run.myTurn,run.tippingPoint,run.cardsPerTurn);
         game.freshStart(run.fdeck,run.oppDeckSize,10);
         game.initConstants();
@@ -901,7 +907,7 @@ const fireNode=new NodeType("Campfire","Aumenta o ataque ou vida de uma carta.",
         campfire();
         resolve();
     },fadeTimer));
-},()=>99992);
+},()=>6);
 
 function genItem(n){
     let totalLots=0;
@@ -1498,7 +1504,7 @@ async function playTrial(i){
     trialMode=false;
 
     if(acc>=trial.amount){
-        await new Promise((resolve)=>setTimeout(resolve,1500));
+        await new Promise((resolve)=>setTimeout(resolve,1250));
         arenaDeck.innerHTML="";
         cardPickPt2(1);
     }
@@ -1556,7 +1562,7 @@ function updateCost(){
         xpos=elements[chosenEl];
         ypos=chosenCost-1;
     }
-    i_costs.draw(ctx,4,xpos,ypos,0,0,0);
+    i_costs.draw(ctx,4,xpos,ypos,0,0);
     updateOPmeter();
 }
 
@@ -1985,7 +1991,7 @@ boostBtn.addEventListener("click",function(){
         else anim(sentToFire,stfCtx);
 
         if(odds==0){
-            setOdds(10);
+            setOdds(15);
         }
         else{
             leaveCampfire(500);
@@ -2099,7 +2105,7 @@ function campfire(){
                 cfCardDiv.style.transform="";
 
                 if((card instanceof ModdedCard && (card.card.custom || card.atkBoost>0 || card.hpBoost>0 || card.extraSigs.length>0)) || card.custom || (fireType==0 && containsAny(card.getVisibleSigils(),naughtySigils))){
-                    setOdds(10);
+                    setOdds(15);
                 }
                 else{
                     setOdds(0);

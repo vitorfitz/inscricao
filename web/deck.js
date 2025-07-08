@@ -427,6 +427,33 @@ function unplayCard(pl,target){
     return card;
 }
 
+function oneWithNothing(pl){
+    const ch=[...hands[pl].children];
+    let transes=[];
+    let rects=[];
+    for(let i=0; i<ch.length; i++){
+        rects[i]=ch[i].getBoundingClientRect();
+    }
+
+    for(let i=0; i<ch.length; i++){
+        ch[i].classList.add("suppressEvents");
+        const targetRect={
+            top:rects[i].top+500*(pl==0? 1: -1),
+            left:rects[i].left
+        }
+        const trans=createTransporter(ch[i], null, rects[i], targetRect, playScr);
+        trans.style.transitionTimingFunction="ease-in";
+        trans.style.transitionDuration="500ms";
+        transes.push(trans);
+    }
+
+    setTimeout(function(){
+        for(let i=0; i<transes.length; i++){
+            transes[i].remove();
+        }
+    },500);
+}
+
 function materialize(card,pl,target){
     const targetEl=cardSpaces[pl][target];
     targetEl.innerHTML="";
@@ -1159,7 +1186,7 @@ for(let i=0; i<actClasses.length; i++){
             configDiv.classList.add(actClasses[modeInd]);
             updateDeckSelect(0);
             whenChanged();
-            if(actModes[modeInd]!=actModes[old_mi] && acts[modeInd]==modeAct2 && acts[old_mi]==modeAct2){
+            if(actModes[modeInd]!=actModes[old_mi]){
                 const ins=[scaleInput,cptInput];
                 for(let inp of ins){
                     let temp=inp.value;
@@ -1410,7 +1437,7 @@ function drawNuhuh(w,h,shadow,corner){
 const deckSlots=9;
 const copyLimit=2;
 const minCards=20;
-const numManas=20;
+const numManas=15;
 const deckDiv=document.querySelector("#decks");
 const deckEditDiv=document.querySelector("#edit");
 const deckTable=deckEditDiv.querySelector("#cards_in_deck");
@@ -2076,12 +2103,21 @@ function showCardPages(){
                 cardEl.addEventListener("click",function(){
                     const deck=decks[beingEdited];
                     const id=mode==mode_exp? filteredCards[i+j].id: filteredCards[i+j].origID;
-                    if(beingEdited!=-1 && (mode==mode_orig || deck.cards[id]<copyLimit)){
-                        deck.cards[id]++;
-                        deck.size++;
-                        updateDeckSize(deckSizeEdit,beingEdited);
-                        cardToTableRow(id);
-                        regret=null;
+                    if(beingEdited!=-1){
+                        let ok;
+                        if(mode==mode_orig){
+                            ok=deck.cards[id]==0 || (id!=c_ouroboros.origID && id!=c_drowned.origID);
+                        }
+                        else{
+                            ok=deck.cards[id]<copyLimit;
+                        }
+                        if(ok){
+                            deck.cards[id]++;
+                            deck.size++;
+                            updateDeckSize(deckSizeEdit,beingEdited);
+                            cardToTableRow(id);
+                            regret=null;
+                        }
                     }
                 })
             }

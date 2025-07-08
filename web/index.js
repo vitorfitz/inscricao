@@ -76,6 +76,18 @@ function checkCost(element,cost){
     else if(element==energy){
         return game.energy[game.myTurn]>=cost;
     }
+    else if(element==mox){
+        let moxen=0;
+        for(let i=0; i<game.lanes; i++){
+            let c=game.board[game.myTurn][i];
+            if(c!=null){
+                if(c.hasSigil(s_sapphire)) moxen|=sapphire;
+                if(c.hasSigil(s_ruby)) moxen|=ruby;
+                if(c.hasSigil(s_emerald)) moxen|=emerald;
+            }
+        }
+        return (moxen&cost)==cost;
+    }
 }
 
 function updateBlockActions(){
@@ -118,14 +130,14 @@ class SpriteSheet{
         };
     }
 
-    draw(canvas,scale,x,y,locX,locY){
+    draw(canvas,scale,x,y,locX,locY,overwriteDimX=this.dims[0]){
         if (num_loaded<ss.length) {
             for(let i=0; i<ss.length; i++){
                 if(!ss[i].loaded){
                     let oldOnload=ss[i].img.onload;
                     ss[i].img.onload = () => {
                         oldOnload();
-                        if(num_loaded==ss.length) this.draw(canvas, scale, x, y, locX, locY);
+                        if(num_loaded==ss.length) this.draw(canvas, scale, x, y, locX, locY,overwriteDimX);
                     };
                 }
             }
@@ -134,13 +146,12 @@ class SpriteSheet{
 
         canvas.imageSmoothingEnabled=false;
         canvas.drawImage(this.img,
-            this.skip[0]*x,  this.skip[1]*y, this.dims[0], this.dims[1],
-            locX*scale, locY*scale, this.dims[0]*scale, this.dims[1]*scale,
+            this.skip[0]*x,  this.skip[1]*y, overwriteDimX, this.dims[1],
+            locX*scale, locY*scale, overwriteDimX*scale, this.dims[1]*scale,
         );
     }
 }
 
-const cardWidth=42,cardHeight=56;
 const i_numbers=new SpriteSheet("text.png",5,6,1,1);
 const i_costs=new SpriteSheet("costs.png",26,13,1,3);
 const i_sigils=new SpriteSheet("sigils.png",17,17,1,1);
@@ -156,7 +167,8 @@ const i_colored_nums=[
 ]
 
 const blackText=0,redText=1,greenText=2;
-const bones=0,blood=1,energy=3;
+const bones=0,blood=1,energy=3,mox=2;
+const sapphire=4,ruby=2,emerald=1;
 
 function getBG(unsac){
     if(unsac){
@@ -167,9 +179,6 @@ function getBG(unsac){
     }
 }
 
-function calcCenterX(width){
-    return (cardWidth-width)/2;
-}
 const act_alignX=calcCenterX(i_act.dims[0]);
 const sig_alignX=calcCenterX(i_sigils.dims[0]);
 const sig_alignX2=calcCenterX(2*i_sigils.dims[0]+1);
@@ -237,7 +246,7 @@ s_bomb.onCardPlayed.push(new Listener(listen_me,async function(){
     }
 }))
 
-s_digger.init([1,0],"Bone Digger","Ganha 1 osso no começo do turno.");
+s_digger.init([1,0],"Bone Digger","Ganha 1 osso no fim do turno.");
 s_digger.onTurnEnded.push(new Listener(listen_ally,async function(){
     game.bones[game.turn]++;
     updateBones(game.turn);
@@ -270,7 +279,7 @@ s_double_death.onCardDied.push(new Listener(listen_ally,async function(me, them)
         game.bones[me.side]++;
         updateBones(me.side);
         for(let l of game.deathListeners[me.side]){
-            if(l.caller.card!=me.card) await l.func(l.caller,them,l.data);
+            if(!l.caller.hasSigil(s_double_death)) await l.func(l.caller,them,l.data);
         }
     }
 }));
@@ -351,6 +360,14 @@ s_explosive10.onCardDied.push(new Listener(listen_me,async function(me,them){
     }
 }));
 
+s_sentry.init([3,5],"Sentry","Causa 1 de dano às cartas que entrarem na frente dela.",undefined,true);
+s_sentry.onCardMoved.push(new Listener(listen_enemy,async function(me,oldPos,mover){
+    if(mover.pos==me.pos){
+        await game.sleep(250);
+        mover.damage(1,me);
+    }
+}));
+
 s_flying.init([0,3],"Airborne","Ataca o oponente diretamente.");
 s_flying.onDealtAttack=function(me,them){
     game.canBlock=false;
@@ -425,6 +442,7 @@ s_freer_sac.init([2,5],"Many Lives","Não morre ao ser sacrificada.",function(me
 s_quills.init([4,5],"Sharp Quills","Causa 1 de dano a quem a ataca.");
 s_quills.onReceivedAttack.push(new Listener(listen_me,async function(me,them){
     if(game.canBlock){
+        await game.sleep(500);
         them.damage(1,me);
     }
 }))
@@ -601,19 +619,19 @@ s_sniper.modifyTargets=async function(me){
     }
 }
 
-s_blood_lust.init([0,7],"Blood Lust","Ganha +1 ataque ao matar uma carta.",function(){
-    return{amAttacking:false};
-});
-s_blood_lust.onReceivedAttack.push(new Listener(listen_enemy,async function(me,opp,attacker,memory){
-    memory.amAttacking=attacker==me;
-}))
-s_blood_lust.onCardDied.push(new Listener(listen_enemy,async function(me,opp,memory){
-    if(memory.amAttacking && game.turn==me.side){
-        me.attack++;
-    }
-}))
+// s_blood_lust.init([0,7],"Blood Lust","Ganha +1 ataque ao matar uma carta.",function(){
+//     return{amAttacking:false};
+// });
+// s_blood_lust.onReceivedAttack.push(new Listener(listen_enemy,async function(me,opp,attacker,memory){
+//     memory.amAttacking=attacker==me;
+// }))
+// s_blood_lust.onCardDied.push(new Listener(listen_enemy,async function(me,opp,memory){
+//     if(memory.amAttacking && game.turn==me.side){
+//         me.attack++;
+//     }
+// }))
 
-s_dam.init([1,7],"Dam Builder","Invoca Represas 0/2 nos espaços adjacentes. Elas bloqueiam cartas voadoras.");
+s_dam.init([1,7],"Dam Builder","Invoca Barreiras 0/2 que bloqueiam cartas voadoras nos espaços adjacentes.");
 s_dam.onCardPlayed.push(new Listener(listen_me,async function(me){
     for(let i=me.pos-dirs[game.turn],j=0; j<2; i+=2*dirs[game.turn],j++){
         if(i>=0 && i<game.lanes && game.board[me.side][i]==null){
@@ -673,15 +691,15 @@ s_cant_be_sacced.init();
 
 s_hand.init([0,0],null,"Número de cartas na sua mão.");
 s_hand.onCardPlayed.push(new Listener(listen_me,async function(me){
-    me.attack=me.side==game.myTurn? game.hand.length: game.oppCards;
+    me.attack=(me.side==game.myTurn? game.hand.length: game.oppCards)+me.baseAttack;
     me.updateStat(0,me.attack);
 },1));
 s_hand.onCardDrawn.push(new Listener(listen_ally,async function(me){
-    me.attack=me.side==game.myTurn? game.hand.length: game.oppCards;
+    me.attack=(me.side==game.myTurn? game.hand.length: game.oppCards)+me.baseAttack;
     me.updateStat(0,me.attack);
 },1));
 s_hand.onCardPlayed.push(new Listener(listen_ally,async function(me){
-    me.attack=me.side==game.myTurn? game.hand.length: game.oppCards;
+    me.attack=(me.side==game.myTurn? game.hand.length: game.oppCards)+me.baseAttack;
     me.updateStat(0,me.attack);
 },1));
 
@@ -689,7 +707,7 @@ s_mirror.init([1,0],null,"Copia o ataque da carta à frente desta.");
 function updateMirror(me){
     const opposite=game.board[1-me.side][me.pos];
     const old=me.attack;
-    me.attack=opposite==null? 0: opposite.attack;
+    me.attack=(opposite==null? 0: opposite.attack)+me.baseAttack;
     if(me.attack!=old) me.updateStat(0,me.attack);
 }
 
@@ -735,9 +753,125 @@ s_packin.onCardPlayed.push(new Listener(listen_me,async function(me){
     gameItemDivs[ind].appendChild(el);
 }));
 
-s_handy.init([0,2],"Handy","Descarte sua mão e compre 4 cartas.",undefined,true);
+s_handy.init([0,2],"Handy","Descarte sua mão e compre 4 cartas.",undefined);
 s_handy.onCardPlayed.push(new Listener(listen_me,async function(me){
-    // TODO
+    oneWithNothing(+(me.side!=game.myTurn));
+    if(me.side==game.myTurn){
+        game.hand=[];
+    }
+    else{
+        game.oppCards=0;
+    }
+    await game.sigilInitiatedDraw(4,me.side);
+}));
+
+s_sapphire.init([2,3],null,null,undefined,true);
+s_emerald.init([3,3],null,null,undefined,true);
+s_ruby.init([4,3],null,null,undefined,true);
+
+s_looter.init([4,4],"Looter","Compre 1 carta para cada dano direto causado.",undefined,true);
+s_looter.onFaceDmg.push(new Listener(listen_enemy, async function(dmg,me,attacker,target){
+    if(me==attacker){
+        await game.sigilInitiatedDraw(dmg,me.side);
+    }
+    return dmg;
+},-1));
+
+s_dependant.init([0,4],"Gem Dependant","Se você não tiver Gemas, morre no fim do turno ou ao ser jogada.",undefined,true);
+async function gemCheck(me,wait=0){
+    for(let i=0; i<game.lanes; i++){
+        if(i!=me.pos){
+            const c=game.board[me.side][i];
+            if(c!=null && (c.hasSigil(s_sapphire) || c.hasSigil(s_ruby) ||  c.hasSigil(s_emerald))){
+                return;
+            }
+        }
+    }
+    if(wait>0) await game.sleep(wait);
+    me.die();
+}
+s_dependant.onTurnEnded.push(new Listener(listen_any, async function(me){
+   await gemCheck(me);
+},0));
+s_dependant.onCardPlayed.push(new Listener(listen_me, async function(me){
+    await gemCheck(me,250);
+ },0));
+
+s_repulsive.init([5,4],function(sign,me,pos){
+    game.updateBuffs(1-me.side,pos,-6969*sign);
+},"Repulsive","Impede a carta da frente de atacar.",undefined,true);
+
+function genAnimBuff(sign,me,i,c=game.board[me.side][i]){
+    if(c!=null && (c.hasSigil(s_sapphire) || c.hasSigil(s_ruby) || c.hasSigil(s_emerald))){
+        game.updateBuffs(me.side,i,sign);
+    }
+}
+s_gem_anim.init([3,0],"Gem Animator","Suas Gemas ganham +1 de ataque.",undefined,false);
+s_gem_anim.onCardMoved.push(new Listener(listen_ally,async function(me,old_pos,mover){
+    if(old_pos!=null){
+        genAnimBuff(-1,me,old_pos,mover);
+    }
+    if(mover.pos!=null){
+        genAnimBuff(1,me,mover.pos,mover);
+    }
+}));
+s_gem_anim.onCardPlayed.push(new Listener(listen_me,async function(me){
+    for(let i=0; i<game.lanes; i++){
+        genAnimBuff(1,me,i);
+    }
+}))
+s_gem_anim.onCardDied.push(new Listener(listen_ally,async function(me,victim){
+    if(victim.pos!=null) genAnimBuff(-1,me,victim.pos,victim);
+}));
+s_gem_anim.onCardDied.push(new Listener(listen_me,async function(me){
+    if(!me.inGame){
+        return;
+    }
+    for(let i=0; i<game.lanes; i++){
+        genAnimBuff(-1,me,i);
+    }
+}));
+
+s_ruby_heart.init(c_orange,"Ruby Heart","Invoca um Rubi ao morrer.");
+s_ruby_heart.coords=[2,2];
+
+s_op_draw.init([1,4],"Mental Gemnastics","Compra 1 carta para cada Gema controlada.",undefined,true);
+s_op_draw.onCardPlayed.push(new Listener(listen_me,async function(me){
+    let gemCount=0;
+    for(let i=0; i<game.lanes; i++){
+        const c=game.board[me.side][i];
+        if(c!=null && (c.hasSigil(s_sapphire) || c.hasSigil(s_ruby) || c.hasSigil(s_emerald))){
+            gemCount++;
+        }
+    }
+    await game.sigilInitiatedDraw(gemCount,me.side);
+}));
+
+s_green_gems.init([4,0],null,"Ataque igual ao seu número de Esmeraldas.");
+function updateGG(me,bias=0){
+    let gemCount=bias;
+    for(let i=0; i<game.lanes; i++){
+        const c=game.board[me.side][i];
+        if(c!=null && c.hasSigil(s_emerald)){
+            gemCount++;
+        }
+    }
+    if(me.attack!=gemCount){
+        me.attack=gemCount;
+        me.updateStat(0,me.attack);
+    }
+}
+s_green_gems.onCardPlayed.push(new Listener(listen_me,async function(me){
+    updateGG(me);
+}));
+s_green_gems.onCardPlayed.push(new Listener(listen_ally,async function(me,played){
+    if(played.hasSigil(s_emerald)) updateGG(me);
+}));
+s_green_gems.onCardDied.push(new Listener(listen_ally,async function(me,dead){
+    if(dead.hasSigil(s_emerald)) updateGG(me,-1);
+}));
+s_green_gems.onTurnEnded.push(new Listener(listen_any,async function(me){
+    updateGG(me);
 }));
 
 const cards=[];
@@ -799,10 +933,24 @@ a_enlarge_unn.init([4,1],2,bones,"Enlarge","Gasta 2 ossos: Ganha +1/1.",async fu
     card.updateStat(0,card.attack);
 });
 
-a_gamble.init([2,0],1,energy,"Gamble","Define o ataque para um número aleatório de 1 a 6.",async function(card){
+a_gamble.init([2,0],1,energy,"Gamble","Define o ataque para um número aleatório de 1 a 6.",async function(card,_,msg){
     const old_ba=card.baseAttack;
-    card.baseAttack=1+Math.floor(Math.random()*6);
+    card.baseAttack=1+msg[0];
     card.attack+=card.baseAttack-old_ba;
+    card.updateStat(0,card.attack);
+},undefined,undefined,function(){return[Math.floor(Math.random()*6)];});
+
+a_potofgreed.init([1,1],0b100,mox,"True Scholar","Se mata e compra 3 cartas.",async function(me){
+    game.sigilInitiatedDraw(3,me.side);
+    me.die();
+});
+
+a_stimulation.init([3,1],3,energy,"Stimulate","Gasta 3 de energia: Ganha +1/1.",async function(card){
+    card.health++;
+    card.baseHealth++;
+    card.updateStat(1,card.health);
+    card.attack++;
+    card.baseAttack++;
     card.updateStat(0,card.attack);
 });
 
@@ -869,6 +1017,7 @@ function clearStat(ctx,scale,atkOrHp,card,unsac){
 function sigilElement(sig,type="canvas"){
     const tooltipEl=document.createElement(type);
     tooltipEl.className="ttTrigger";
+    if(sig.name==null && sig.desc==null) return tooltipEl;
 
     tooltipEl.addEventListener("mouseenter",function(e){
         tooltip.style.opacity=1;
@@ -1007,8 +1156,9 @@ class GameCard{
                 if(this.activated.enabled && blockActions==0){
                     blockActions++;
                     updateBlockActions();
-                    sendMsg(codeActivated+" "+this.pos);
-                    await this.activate();
+                    const msg=this.activated.funcs.genMsg();
+                    sendMsg(codeActivated+" "+[this.pos,...msg].join(" "));
+                    await this.activate(msg);
                     blockActions--;
                     updateBlockActions();
                 }
@@ -1027,7 +1177,7 @@ class GameCard{
         return this.card.name+" @("+this.side+","+this.pos+")";
     }
 
-    async activate(){
+    async activate(msg){
         //console.log("<ACTIVATING "+this.debugInfo());
 
         const el=this.sigilEls[0];
@@ -1036,7 +1186,7 @@ class GameCard{
             el.classList.remove("clicked");
         },250);
 
-        await this.activated.funcs.func(this,this.activated.data);
+        await this.activated.funcs.func(this,this.activated.data,msg);
         await game.resolve();
 
         //console.log(">ACTIVATING "+this.debugInfo());
@@ -1278,7 +1428,7 @@ const dirs=[1,-1];
 let listenerRefs=["deathListeners", "playListeners", "attackListeners", "dmgListeners", "turnEndListeners", "faceListeners", "movementListeners","drawListeners"];
 let listenerFuncs=["onCardDied", "onCardPlayed", "onReceivedAttack", "onReceivedDmg", "onTurnEnded", "onFaceDmg", "onCardMoved","onCardDrawn"];
 const extSource=0;
-
+let lensIndex;
 class Game{
     constructor(_manas,myTurn,tippingPoint=5,cardsPerTurn=1,lanes=4){
         this.starts=[0,lanes-1];
@@ -1407,7 +1557,7 @@ class Game{
             energy: this.energy,
             maxEnergy:this.maxEnergy,
             manasLeft: this.manasLeft,
-            oppcardsLeft:this.oppCardsLeft,
+            oppCardsLeft:this.oppCardsLeft,
             bones: this.bones,
             scales:this.scales,
             hand: this.hand,
@@ -1921,18 +2071,18 @@ class Game{
                 c.totemEls=[];
             }
         }
-        game.totemEffects[1-this.turn]=[];
+        this.totemEffects[1-this.turn]=[];
 
-        for(let l of [...game.turnEndListeners[this.turn]]){
+        for(let l of [...this.turnEndListeners[this.turn]]){
             await l.func(l.caller,l.data);
         }
 
-        await game.resolve(true);
+        await this.resolve(true);
 
         this.turn=1-this.turn;
         this.energy[this.turn]=this.maxEnergy[this.turn];
-        game.energize();
-        game.turnCount++;
+        this.energize();
+        this.turnCount++;
 
         // await new Promise(function(resolve) {
         //     setTimeout(resolve, 350);
@@ -1945,69 +2095,89 @@ class Game{
                 await game.addCardToHand(c_starvation,1-this.turn);
             }
             else{
-                const rect=myDecks.getBoundingClientRect();
-                drawOverlay.style.top=rect.top-nuhuhPadding+"px";
-                drawOverlay.style.left=rect.left-nuhuhPadding+"px";
-                nuhuh.style.transitionDuration="300ms";
-                nuhuh.style.opacity="1";
-
-                lensIndex=-1;
-                if(run){
-                    for(let i=0; i<run.items.length; i++){
-                        if(run.items[i]==lensItem && run.usedItems.indexOf(i)==-1){
-                            lensIndex=i;
-                            break;
-                        }
-                    }
-                }
-                if(lensIndex!=-1){
-                    lensEl.style.display="";
-                    const rect=deckPiles[0][0].getBoundingClientRect();
-                    lensEl.style.top=rect.top+(112-lensEl.offsetHeight)+"px";
-                    lensEl.style.left=rect.left+"px";
-                }
-                else{
-                    lensEl.style.display="none";
-                }
-
-                let rem=Math.min(this.cardsPerTurn,this.turnCount,this.deck.length+this.manasLeft[this.turn]);
-                let that=this;
-                const t=this.manas? 2: 1;
-                for(let i=0; i<t; i++){
-                    async function myFunc(){
-                        if(rem==0) return;
-                        rem--;
-                        if(rem==0){
-                            for(let j=0; j<t; j++){
-                                deckPiles[0][j].removeEventListener("click", myFunc);
-                                deckPiles[0][j].style.cursor="";
-                            }
-                            nuhuh.style.transitionDuration="100ms";
-                            nuhuh.style.opacity="0";
-                        }
-
-                        sendMsg(codeDecision+" "+i);
-                        await that.drawCard(i);
-                        
-                        if(rem==0){
-                            blockActions--;
-                            updateBlockActions();
-                        }
-                    }
-                    deckPiles[0][i].addEventListener("click",myFunc.bind(this));
-                    deckPiles[0][i].style.cursor="pointer";
-                }
+                this.drawPrompt(Math.min(this.cardsPerTurn,this.turnCount));
             }
         }
         else{
             if(this.oppCardsLeft==0 && this.manasLeft[this.turn]==0){
-                await game.addCardToHand(c_starvation,1-this.turn,(sv)=>{
-                    game.starvation++;
-                    sv.attack=game.starvation;
-                    sv.health=game.starvation;
+                await this.addCardToHand(c_starvation,1-this.turn,(sv)=>{
+                    this.starvation++;
+                    sv.attack=this.starvation;
+                    sv.health=this.starvation;
                     sv.updateStat(0,sv.attack);
                     sv.updateStat(1,sv.health);
                 });
+            }
+        }
+    }
+
+    drawPrompt(qty){
+        const rect=myDecks.getBoundingClientRect();
+        drawOverlay.style.top=rect.top-nuhuhPadding+"px";
+        drawOverlay.style.left=rect.left-nuhuhPadding+"px";
+        nuhuh.style.transitionDuration="300ms";
+        nuhuh.style.opacity="1";
+
+        lensIndex=-1;
+        if(run){
+            for(let i=0; i<run.items.length; i++){
+                if(run.items[i]==lensItem && run.usedItems.indexOf(i)==-1){
+                    lensIndex=i;
+                    break;
+                }
+            }
+        }
+        if(lensIndex!=-1){
+            lensEl.style.display="";
+            const rect=deckPiles[0][0].getBoundingClientRect();
+            lensEl.style.top=rect.top+(112-lensEl.offsetHeight)+"px";
+            lensEl.style.left=rect.left+"px";
+        }
+        else{
+            lensEl.style.display="none";
+        }
+
+        let rem=Math.min(qty,this.deck.length+this.manasLeft[this.turn]);
+        let that=this;
+        const t=this.manas? 2: 1;
+        for(let i=0; i<t; i++){
+            async function myFunc(){
+                if(rem==0) return;
+                rem--;
+                if(rem==0){
+                    for(let j=0; j<t; j++){
+                        deckPiles[0][j].removeEventListener("click", myFunc);
+                        deckPiles[0][j].style.cursor="";
+                    }
+                    nuhuh.style.transitionDuration="100ms";
+                    nuhuh.style.opacity="0";
+                }
+
+                sendMsg(codeDecision+" "+i);
+                await that.drawCard(i);
+                        
+                if(rem==0){
+                    blockActions--;
+                    updateBlockActions();
+                }
+            }
+            deckPiles[0][i].addEventListener("click",myFunc.bind(this));
+            deckPiles[0][i].style.cursor="pointer";
+        }
+    }
+
+    async sigilInitiatedDraw(qty,side){
+        if(mode==mode_exp){
+            if(side==game.myTurn){
+                blockActions++;
+                updateBlockActions();
+                this.drawPrompt(qty);
+            }
+        }
+        else{
+            const dr=Math.min(qty,side==this.myTurn? this.deck.length: this.oppCardsLeft);
+            for(let i=0; i<dr; i++){
+                await this.drawCard(0,side);
             }
         }
     }
@@ -2023,9 +2193,10 @@ class Game{
             let modMsg=null,customMsg=null;
             switch (msg[0]){
                 case codeActivated:
-                    let actPos=parseInt(msg.substring(2));
+                    let spl2=msg.substring(2).split(" ");
+                    let actPos=parseInt(spl2[0]);
                     let actCard=this.board[game.turn][actPos];
-                    await actCard.activate();
+                    await actCard.activate(spl2.slice(1).map((x)=>parseInt(x)));
                     break;
 
                 case codePlayedModded:
