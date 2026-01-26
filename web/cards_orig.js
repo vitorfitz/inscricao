@@ -91,6 +91,11 @@ c_hover_mage.init_orig();
 c_mox_module.init_orig();
 c_skelemagus.init_orig();
 
+c_null_cond.init_orig();
+c_factory_cond.init_orig();
+c_energy_cond.init_orig();
+c_buff_cond.init_orig();
+
 c_undead_cat.init_orig_no_id();
 c_starvation.init_orig_no_id();
 c_wolf.init_orig_no_id();

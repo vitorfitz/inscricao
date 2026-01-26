@@ -115,6 +115,11 @@ c_hover_mage.init("Hover Mage",0b100,1,1,mox,[s_flying],null,[5,4],false);
 c_skelemagus.init("Skelemagus",2,4,1,bones,[s_brittle,s_dependant],null,[8,0],false);
 c_mox_module.init("Mox Module",3,0,3,energy,[s_sapphire,s_ruby,s_emerald],null,[3,9],false);
 
+c_null_cond.init("Null Conduit",1,0,1,energy,[s_null_cond],null,[7,9],false);
+c_factory_cond.init("Factory Conduit",3,0,2,energy,[s_factory_cond],null,[5,2],false);
+c_buff_cond.init("Buff Conduit",3,0,2,energy,[s_buff_cond],null,[7,2],false);
+c_energy_cond.init("Energy Conduit",3,1,2,energy,[s_energy_cond],null,[4,2],false);
+
 c_rock.init("Boulder",0,0,5,bones,[s_cant_be_sacced],null,[6,16],false);
 c_pack_rat.init("Pack Rat",2,2,3,blood,[s_packin],null,[7,16],false);
 c_undead_cat.init("Undead Cat",1,3,6,blood,[],null,[1,2],false);

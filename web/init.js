@@ -124,7 +124,7 @@ class SFrozen extends Sigil{
 }
 
 class BuffSigil extends Sigil{
-    init(coords,buff,name=null,desc=null,initData=function(card,sigil){},hidden=false){
+    init(coords,buff,name=null,desc=null,initData=function(card,sigil){},alsoAlly=false,hidden=false){
         super.init(coords,name,desc,initData,hidden);
         this.onCardMoved.push(new Listener(listen_me,async function(me,old_pos,_,memory){
             if(old_pos!=null){
@@ -140,6 +140,20 @@ class BuffSigil extends Sigil{
             }
             buff(-1,me,me.pos,memory);
         }));
+
+        if(alsoAlly){
+            this.onCardMoved.push(new Listener(listen_ally,async function(me,_,_2,memory){
+                buff(-1,me,me.pos,memory);
+                buff(1,me,me.pos,memory);
+            }));
+            this.onCardDied.push(new Listener(listen_ally,async function(me,ded,memory){
+                if(ded.pos==null) return;
+                buff(-1,me,me.pos,memory);
+                game.board[ded.side][ded.pos]=null;
+                buff(1,me,me.pos,memory);
+                game.board[ded.side][ded.pos]=ded;
+            }));
+        }
     }
 }
 
@@ -318,6 +332,7 @@ class Card{
         const c=document.createElement("canvas");
         c.width=cardWidth*scale;
         c.height=cardHeight*scale;
+        c.className="baseCanvas";
         const ctx=c.getContext("2d");
 
         let sigilEls=[];
@@ -445,7 +460,23 @@ function drawSigils(visibleSigils,scale){
             
         i_sigils.draw(tooltipEl.getContext("2d"),scale,visibleSigils[i].coords[0],visibleSigils[i].coords[1],0,0);
         alignX+=i_sigils.dims[0]+1;
-        els.push(tooltipEl);
+
+        let base=tooltipEl;
+        if(conduitSigils.indexOf(visibleSigils[i])!=-1){
+            base=document.createElement("div");
+            base.style.position="absolute";
+            base.style.top=0;
+            base.style.bottom=0;
+            base.style.left=0;
+            base.style.right=0;
+            const condCanvas=document.createElement("canvas");
+            condCanvas.width=scale*cardWidth;
+            condCanvas.height=scale*cardHeight;
+            i_cards.draw(condCanvas.getContext("2d"),scale,0,4,0,0);
+            base.appendChild(condCanvas);
+            base.appendChild(tooltipEl);
+        }
+        els.push(base);
     }
     return els;
 }
@@ -623,6 +654,11 @@ const c_hover_mage=new Card();
 const c_skelemagus=new Card();
 const c_mox_module=new Card();
 
+const c_null_cond=new Card();
+const c_buff_cond=new Card();
+const c_factory_cond=new Card();
+const c_energy_cond=new Card();
+
 const a_enlarge_unn=new VanillaActivated();
 const a_stimulation=new VanillaActivated();
 const a_gamble=new VanillaActivated();
@@ -642,3 +678,9 @@ const s_gem_anim=new Sigil();
 const s_ruby_heart=new SFrozen();
 const s_op_draw=new Sigil();
 const s_green_gems=new StatSigil();
+const s_null_cond=new Sigil();
+const s_energy_cond=new BuffSigil();
+const s_buff_cond=new BuffSigil();
+const s_factory_cond=new Sigil();
+
+const conduitSigils=[s_null_cond,s_energy_cond,s_buff_cond,s_factory_cond];

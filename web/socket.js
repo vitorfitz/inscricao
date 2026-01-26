@@ -113,6 +113,7 @@ function parseMsg(msg){
     switch (msg){
         case codeResign:
             if(game) game.itsOver();
+            else quitRun();
             return
                 
         case codeQuit:

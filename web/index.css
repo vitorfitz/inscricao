@@ -1438,28 +1438,28 @@ img{
     margin-right: 10px;
 }
 
-.cardsClickable :not(.unsaccable)>canvas{
+.cardsClickable .space>:not(.unsaccable){
     cursor: pointer;
 }
-.hammering.cardsClickable canvas:not(.unsaccable){
+.hammering.cardsClickable .space>*{
     animation: imgonnadie 200ms linear forwards;
     animation-iteration-count: infinite;
 }
-#myBoard.hammering>:nth-child(2) canvas{
+#myBoard.hammering>:nth-child(2) .space>*{
     animation-delay: -112ms;
     animation-direction: reverse;
 }
-#myBoard.hammering>:nth-child(3) canvas{
+#myBoard.hammering>:nth-child(3) .space>*{
     animation-delay: -75ms;
 }
-#myBoard.hammering>:nth-child(4) canvas{
+#myBoard.hammering>:nth-child(4) .space>*{
     animation-delay: -37ms;
     animation-direction: reverse;
 }
 .spacesClickable>*>*{
     cursor: pointer;
 }
-.spacesClickable canvas{
+.spacesClickable .space>*{
     cursor: auto;
 }
 
@@ -1531,28 +1531,24 @@ img{
 }
 
 #floatingLens{
-    transition: opacity 300ms linear;
     position: absolute;
     z-index: 5;
-    cursor: pointer;
-    pointer-events: all;
-    background-color: rgba(31,63,95,0.2);
-    width: 84px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #0f181f;
-    font-family: sans-serif;
-    font-size: 16px;
-    font-weight: bold;
 }
 
-#floatingLens img{
-    width: 18px;
-    transform: rotate(25deg);
-    filter: brightness(0%);
-    margin-right:6px;
+#floatingLens>*{
+    transition: opacity 300ms linear;
+    opacity:0;
+}
+#floatingLens>.usableLens{
+    opacity: 1;
+    filter: saturate(175%);
+}
+#floatingLens>*>img{
+    pointer-events: none;
+}
+#floatingLens.events>.usableLens>img{
+    cursor: pointer;
+    pointer-events: all;
 }
 
 .nuhuh>canvas{

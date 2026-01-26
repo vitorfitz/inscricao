@@ -127,32 +127,18 @@ function maintainOppItems(search=run.revealedItems){
 }
 
 const lensEl=document.querySelector("#floatingLens")
-lensEl.addEventListener("click",async function(){
-    if(game.turn==game.myTurn && blockActions==1 && lensIndex!=-1){
-        let newLI=-1;
-        for(let i=0; i<run.items.length; i++){
-            if(i!=lensIndex && run.items[i]==lensItem && run.usedItems.indexOf(i)==-1){
-                newLI=i;
-                break;
-            }
+const lenses=lensEl.children;
+for(let i=0; i<lenses.length; i++){
+    lenses[i].addEventListener("click",async function(){
+        if(run && game.turn==game.myTurn && blockActions==1 && run.items[i]==lensItem && run.usedItems.indexOf(i)==-1){
+            blockActions++;
+            updateBlockActions();
+            await lensItem.myFunc(i);
+            blockActions--;
+            updateBlockActions();
         }
-        if(newLI==-1){
-            lensEl.style.opacity=0;
-            setTimeout(function(){
-                lensEl.style.opacity=1;
-                lensEl.style.display="none";
-            },300);
-        }
-
-        blockActions++;
-        updateBlockActions();
-        await lensItem.myFunc(lensIndex);
-        blockActions--;
-        updateBlockActions();
-
-        lensIndex=newLI;
-    }
-});
+    });
+}
 
 const lensItem=new Item("Magpie's Lens","Coloque uma carta no topo do seu deck.","lens.webp",()=>1,
 null,
@@ -162,8 +148,12 @@ async function(i){
         game.deck[i]=game.deck[game.deck.length-1];
         game.deck[game.deck.length-1]=temp;
         shuffle(game.deck,game.deck.length-2,true);
-    }).then(()=>deckPiles[0][0].click())]);
+    }).then(()=>{if(game.deck.length>0) deckPiles[0][0].click();})]);
 });
+
+for(let i=0; i<lenses.length; i++){
+    addTooltip(lensItem,lenses[i].firstElementChild);
+}
 
 function removeListeners(card){
     for(let ref of listenerRefs){
@@ -289,11 +279,9 @@ function closeItemModal(){
 }
 
 function addItem(it){
-    const c=sigilElement(it,"img");
-    c.src=it.file.src;
-    c.style.position="relative";
-    itemDivs[run.items.length].appendChild(c);
+    const len=run.items.length;
     run.items.push(it);
+    addItemImg(len,itemDivs);
 }
 
 async function consumeItem(i){
@@ -308,18 +296,28 @@ async function consumeItem(i){
     el.classList.add("shakeAndFade");
     void el.offsetHeight;
     el.style.filter="saturate(25%)";
+    lenses[i].classList.remove("usableLens");
     await new Promise((resolve)=>setTimeout(resolve,500));
+}
+
+function addItemImg(i,id){
+    const item=run.items[i];
+    const c=sigilElement(item,"img");
+    c.src=item.file.src;
+    c.style.position="relative";
+    id[i].appendChild(c);
+    if(id==gameItemDivs && item==lensItem){
+        lenses[i].classList.add("usableLens");
+    }
 }
 
 function updateItemDivs(id=itemDivs,ini=0){
     for(let i=ini; i<id.length; i++){
         id[i].innerHTML="";
+        lenses[i].classList.remove("usableLens");
     }
     for(let i=ini; i<run.items.length; i++){
-        const c=sigilElement(run.items[i],"img");
-        c.src=run.items[i].file.src;
-        c.style.position="relative";
-        id[i].appendChild(c);
+        addItemImg(i,id);
     }
 }
 

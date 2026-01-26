@@ -34,6 +34,7 @@ function updateBones(s,g=game){
     boneSpans[+(s!=g.myTurn)].textContent="x"+g.bones[s];
 }
 function spendEnergy(amt,turn=game.turn){
+    if(game.energyConds[turn]>0 && calcCircuit(turn)!=null) return;
     const e=game.energy[turn];
     game.energy[turn]-=amt;
     const uiTurn=+(turn!=game.myTurn);
@@ -747,10 +748,8 @@ s_packin.onCardPlayed.push(new Listener(listen_me,async function(me){
         run.items.push(picked);
     }
 
-    const el=sigilElement(picked,"img");
-    el.src=picked.file.src;
     gameItemDivs[ind].innerHTML="";
-    gameItemDivs[ind].appendChild(el);
+    addItemImg(ind,gameItemDivs);
 }));
 
 s_handy.init([0,2],"Handy","Descarte sua mão e compre 4 cartas.",undefined);
@@ -799,7 +798,7 @@ s_dependant.onCardPlayed.push(new Listener(listen_me, async function(me){
 
 s_repulsive.init([5,4],function(sign,me,pos){
     game.updateBuffs(1-me.side,pos,-6969*sign);
-},"Repulsive","Impede a carta da frente de atacar.",undefined,true);
+},"Repulsive","Impede a carta da frente de atacar.",undefined,false,true);
 
 function genAnimBuff(sign,me,i,c=game.board[me.side][i]){
     if(c!=null && (c.hasSigil(s_sapphire) || c.hasSigil(s_ruby) || c.hasSigil(s_emerald))){
@@ -873,6 +872,65 @@ s_green_gems.onCardDied.push(new Listener(listen_ally,async function(me,dead){
 s_green_gems.onTurnEnded.push(new Listener(listen_any,async function(me){
     updateGG(me);
 }));
+
+function calcCircuit(side){
+    let res=[0,game.lanes-1];
+    let steps=[1,-1];
+
+    for(let i=0; i<2; i++){
+        w: while(res[i]!=res[1-i]){
+            let c=game.board[side][res[i]];
+            if(c!=null){
+                for(let s of c.sigils){
+                    if(conduitSigils.indexOf(s.funcs)!=-1){
+                        break w;
+                    }
+                }
+            }
+            res[i]+=steps[i];
+        }
+    }
+    
+    if(res[0]==res[1]) return null;
+    if(side==1){
+        return[res[1]-1,res[0],-1];
+    }
+    else{
+        return[res[0]+1,res[1],1];
+    }
+}
+
+s_null_cond.init([5,8],null,null,undefined,true);
+
+s_factory_cond.init([1,1],"Spawn Conduit","No fim do seu turno, cria bots 0/2 que bloqueiam cartas voadoras nos espaços vazios do circuito.",undefined,true);
+s_factory_cond.onTurnEnded.push(new Listener(listen_ally,async function(me){
+    const circ=calcCircuit(me.side);
+    if(circ==null) return;
+    for(let i=circ[0]; i!=circ[1]; i+=circ[2]){
+        if(game.board[me.side][i]==null){
+            await (GameCard.fromCard(c_l33pbot,true)).place(i,me.side);
+        }
+    }
+}));
+
+s_energy_cond.init([5,0],function(sign,me){
+    game.energyConds[me.side]+=sign;
+},"Energy Conduit","Quando parte de um circuito, suas cartas não gastam energia.",undefined,false,true);
+
+s_buff_cond.init([4,0],function(sign,me,pos,mem){
+    if(sign==1){
+        mem.lastCirc=calcCircuit(me.side);
+    }
+    if(mem.lastCirc){
+        for(let i=mem.lastCirc[0]; i!=mem.lastCirc[1]; i+=mem.lastCirc[2]){
+            if(i!=pos){
+                game.updateBuffs(me.side,i,sign);
+            }
+        }
+    }
+},"Buff Conduit","Cartas dentro do circuito têm +1 de ataque.",function(){
+    return{lastCirc:null};
+},true,true);
 
 const cards=[];
 const origCards=[];
@@ -1014,11 +1072,7 @@ function clearStat(ctx,scale,atkOrHp,card,unsac){
     );
 }
 
-function sigilElement(sig,type="canvas"){
-    const tooltipEl=document.createElement(type);
-    tooltipEl.className="ttTrigger";
-    if(sig.name==null && sig.desc==null) return tooltipEl;
-
+function addTooltip(sig,tooltipEl){
     tooltipEl.addEventListener("mouseenter",function(e){
         tooltip.style.opacity=1;
         tooltip.style.visibility="visible";
@@ -1046,7 +1100,13 @@ function sigilElement(sig,type="canvas"){
         tooltip.style.visibility="hidden";
         if(hoveredTT==tooltipEl) hoveredTT=null;
     });
+}
 
+function sigilElement(sig,type="canvas"){
+    const tooltipEl=document.createElement(type);
+    tooltipEl.className="ttTrigger";
+    if(sig.name==null && sig.desc==null) return tooltipEl;
+    addTooltip(sig,tooltipEl);
     return tooltipEl;
 }
 
@@ -1428,7 +1488,6 @@ const dirs=[1,-1];
 let listenerRefs=["deathListeners", "playListeners", "attackListeners", "dmgListeners", "turnEndListeners", "faceListeners", "movementListeners","drawListeners"];
 let listenerFuncs=["onCardDied", "onCardPlayed", "onReceivedAttack", "onReceivedDmg", "onTurnEnded", "onFaceDmg", "onCardMoved","onCardDrawn"];
 const extSource=0;
-let lensIndex;
 class Game{
     constructor(_manas,myTurn,tippingPoint=5,cardsPerTurn=1,lanes=4){
         this.starts=[0,lanes-1];
@@ -1490,7 +1549,7 @@ class Game{
         this.energy=[0,0];
         this.maxEnergy=[0,0];
         if(this.manas){
-            this.manasLeft=[numManas,numManas];
+            this.manasLeft=[nm,nm];
         }
         else{
             this.manasLeft=[0,0];
@@ -1504,6 +1563,7 @@ class Game{
         this.startMana=startMana;
         this.totemEffects=[[],[]];
         this.starvation=0;
+        this.energyConds=[0,0];
 
         this.energize();
         this.hand=[];
@@ -1646,6 +1706,7 @@ class Game{
             playScr.style.visibility="hidden";
             if(!run || (run.life[0]<=0 || run.life[1]<=0)){
                 menu.style.visibility="visible";
+                quitter.style.display="none";
                 run=null;
             }
             else{
@@ -1976,7 +2037,7 @@ class Game{
             }
             else{
                 card=this.deck.pop();
-                // card=c_mantis;
+                // card=c_alpha;
                 cardsLeft=this.deck.length;
             }
         }
@@ -2118,23 +2179,11 @@ class Game{
         nuhuh.style.transitionDuration="300ms";
         nuhuh.style.opacity="1";
 
-        lensIndex=-1;
         if(run){
-            for(let i=0; i<run.items.length; i++){
-                if(run.items[i]==lensItem && run.usedItems.indexOf(i)==-1){
-                    lensIndex=i;
-                    break;
-                }
-            }
-        }
-        if(lensIndex!=-1){
-            lensEl.style.display="";
-            const rect=deckPiles[0][0].getBoundingClientRect();
-            lensEl.style.top=rect.top+(112-lensEl.offsetHeight)+"px";
+            const rect=gidParent.getBoundingClientRect();
+            lensEl.style.top=rect.top+"px";
             lensEl.style.left=rect.left+"px";
-        }
-        else{
-            lensEl.style.display="none";
+            lensEl.classList.add("events");
         }
 
         let rem=Math.min(qty,this.deck.length+this.manasLeft[this.turn]);
@@ -2151,6 +2200,7 @@ class Game{
                     }
                     nuhuh.style.transitionDuration="100ms";
                     nuhuh.style.opacity="0";
+                    lensEl.classList.remove("events");
                 }
 
                 sendMsg(codeDecision+" "+i);

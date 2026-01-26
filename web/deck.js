@@ -977,6 +977,7 @@ async function newGame(chosen,myJSON,theirJSON,creator){
     }
 
     if(game) await game.over;
+    lensEl.style.display="none";
     game=new Game(_manas,theirJSON.myTurn,creator.tippingPoint,creator.cardsPerTurn);
     game.freshStart(deckToArray(decks[chosen]));
     game.initConstants();
@@ -986,12 +987,13 @@ async function newGame(chosen,myJSON,theirJSON,creator){
 
 const hearts=playScr.querySelectorAll(".heart");
 const act1Stuff=playScr.querySelectorAll(".act1stuff");
-const gameItemDivs=playScr.querySelector("#myItems").children;
+const gidParent=playScr.querySelector("#myItems");
+const gameItemDivs=gidParent.children;
 const theirItems=playScr.querySelector("#oppItems").children;
 
 for(let i=0; i<gameItemDivs.length; i++){
     gameItemDivs[i].addEventListener("click",async function(){
-        if(i<run.items.length && run.usedItems.indexOf(i)==-1 && (blockActions==0 || (game.turn==game.myTurn && blockActions==1 && run.items[i]==lensItem))){
+        if(i<run.items.length && run.usedItems.indexOf(i)==-1 && blockActions==0){
             blockActions++;
             updateBlockActions();
             clickPromArmor=true;

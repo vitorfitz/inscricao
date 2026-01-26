@@ -48,6 +48,8 @@ class Run{
     }
 }
 
+let cleanup=null;
+
 const fadeTimer=500;
 function addDrip(extraSigs,canvas,scale=2){
     if(extraSigs.length==0) return[];
@@ -114,6 +116,7 @@ class ModdedCard{
 
 const cardSelect=document.querySelector("#card_choice");
 function newRun(otherJSON,configs){
+    lensEl.style.display="";
     run=new Run(otherJSON.myTurn,configs.tippingPoint,configs.cardsPerTurn,configs.lifeTotal);
     mode=mode_exp;
     run.freshStart();
@@ -123,6 +126,7 @@ function newRun(otherJSON,configs){
     // cardPick(10,3,buffedCards);
     cardPick(10,0,randomCards);
     fader.style.animationDuration=fadeTimer+"ms";
+    quitter.style.display="";
 }
 
 const pick3=document.querySelector("#pick3");
@@ -214,30 +218,30 @@ function presentCards(){
     }
 }
 
-function stopPicking(delayRemoval=false){
+function pickCleanup(delayRemoval){
     presentedCards=[];
     halt=false;
     trialMode=false;
-    fader.classList.add("fade");
-    setTimeout(function(){
-        fader.classList.remove("fade");
-        cardSelect.style.visibility="hidden";
-        showMap();
-        arenaDeck.innerHTML="";
-        if(delayRemoval){
-            for(let i=0; i<pickSpaces.length; i++){
-                pickSpaces[i].innerHTML="";
-            }
-        }
-    },fadeTimer);
-    hoveredTT=null;
-    tooltip.style.opacity=0;
-    tooltip.style.visibility="hidden";
-    if(!delayRemoval){
+    arenaDeck.innerHTML="";
+    cardSelect.style.visibility="hidden";
+    if(delayRemoval){
         for(let i=0; i<pickSpaces.length; i++){
             pickSpaces[i].innerHTML="";
         }
     }
+}
+
+function stopPicking(delayRemoval=false){
+    if(!delayRemoval){
+        for(let i=0; i<pickSpaces.length; i++){
+            pickSpaces[i].innerHTML="";
+        }
+        cleanup=function(){pickCleanup(false);};
+    }
+    fader.classList.add("fade");
+    setTimeout(function(){
+        showMap();
+    },fadeTimer);
 }
 
 const arenaDeck=document.createElement("div");
@@ -298,6 +302,7 @@ function cardPick(n,rr=0,gen=randomCards){
 }
 
 function cardPickPt2(n){
+    cleanup=function(){pickCleanup(true);};
     updateReroll();
     for(let i=0; i<run.fdeck.length; i++){
         arenaDeck.appendChild(run.fdeck[i].render(2));
@@ -593,12 +598,12 @@ let sigilEstimates={};
         }
     }};
     se[s_dam.id]={boost:(pe)=>{
-        if(has(pe,s_alpha)) pe.additiveExt+=4.8;
-        else if(has(pe,s_sq_spawner) || has(pe,s_skele_spawner) || has(pe,s_explosive)) pe.additiveExt+=1.6;
+        if(has(pe,s_alpha)) pe.additiveExt+=3.7;
+        else if(has(pe,s_explosive)) pe.additiveExt+=1.6;
         else pe.additiveExt+=3.2;
     }};
     se[s_alpha.id]={mod:(pe)=>{
-        pe.additive+=1.5;
+        pe.additive+=1.8;
         if(has(pe,s_guardian) || has(pe,s_burrow)) pe.presence+=0.3;
         else pe.presence+=0.6;
     }};
@@ -1356,6 +1361,12 @@ deckDivs[0].addEventListener("click",async function(){
 });
 
 function showMap(){
+    if(!run) return;
+    fader.classList.remove("fade");
+    if(cleanup){
+        cleanup();
+        cleanup=null;
+    }
     map.style.visibility="visible";
     deckViewer.style.width=cardWidth*2*Math.max(3,Math.ceil(run.deck.length/3))+"px";
     hoveredTT=null;
@@ -1505,17 +1516,18 @@ async function playTrial(i){
 
     if(acc>=trial.amount){
         await new Promise((resolve)=>setTimeout(resolve,1250));
-        arenaDeck.innerHTML="";
-        cardPickPt2(1);
+        if(run && !run.overBool){
+            arenaDeck.innerHTML="";
+            cardPickPt2(1);
+        }
     }
     else{
         await new Promise((resolve)=>setTimeout(resolve,1000));
-        fader.classList.add("fade");
-        await new Promise((resolve)=>setTimeout(resolve,fadeTimer));
-        fader.classList.remove("fade");
-        arenaDeck.innerHTML="";
-        cardSelect.style.visibility="hidden";
-        showMap();
+        if(run && !run.overBool){
+            fader.classList.add("fade");
+            await new Promise((resolve)=>setTimeout(resolve,fadeTimer));
+            showMap();
+        }
     }
     chosenTrans.remove();
     transes.forEach((trans)=>trans.remove());
@@ -1755,6 +1767,7 @@ const ptrWidth=4,ptrLen=32,middleRadius=5;
 
 const bcBtn=buildACard.querySelector("#create");
 const splosh=buildACard.querySelector("#splosh");
+let ncCanvas;
 
 bcBtn.addEventListener("click",async function(){
     bcBtn.style.display="none";
@@ -1793,7 +1806,6 @@ bcBtn.addEventListener("click",async function(){
     }
 
     const success=Math.random()>failChance;
-    let ncCanvas;
     if(success){
         const newCard=new Card();
         run.deck.push(new ModdedCard(newCard));
@@ -1823,29 +1835,33 @@ bcBtn.addEventListener("click",async function(){
         await new Promise((resolve)=>setTimeout(resolve,750));
     }
 
-    fader.classList.add("fade");
-    setTimeout(function(){
+    if(!run.overBool){
+        fader.classList.add("fade");
+        setTimeout(function(){
+            showMap();
+        },fadeTimer);
+    }
+});
+
+const adcf=document.querySelector("#adcf");
+function letsBuildACard(){
+    cleanup=function(){
         bcHolder.style.transform="";
         buildACard.classList.remove("blockAll");
-        showMap();
         arenaDeck.innerHTML="";
         buildACard.style.visibility="hidden";
-        fader.classList.remove("fade");
         bcSigils.innerHTML="";
         
-
-        if(success){
+        if(ncCanvas){
             ncCanvas.remove();
+            ncCanvas=null;
         }
         else{
             splosh.style.display="";
             splosh.style.transform="";
         }
-    },fadeTimer);
-});
+    };
 
-const adcf=document.querySelector("#adcf");
-function letsBuildACard(){
     map.style.visibility="hidden";
     buildACard.style.visibility="visible";
     chosenCost=1;
@@ -2033,14 +2049,7 @@ async function leaveCampfire(delay=0){
     if(delay>0) await new Promise((resolve)=>setTimeout(resolve,delay))
     fader.classList.add("fade");
     setTimeout(function(){
-        fader.classList.remove("fade");
-        campfireDiv.style.visibility="hidden";
         showMap();
-        sentToFire=null;
-        animProm=null;
-        cfCardDiv.innerHTML="";
-        cfCardDiv.style.transitionDuration="";
-        arenaDeck.innerHTML="";
     },fadeTimer);
 }
 
@@ -2078,6 +2087,15 @@ function campfire(){
     blockClicks=false;
     animProm=null;
 
+    cleanup=function(){
+        campfireDiv.style.visibility="hidden";
+        sentToFire=null;
+        animProm=null;
+        cfCardDiv.innerHTML="";
+        cfCardDiv.style.transitionDuration="";
+        arenaDeck.innerHTML="";
+    };
+
     adcf2.appendChild(arenaDeck);
     calcMargin(arenaDeck,run.fdeck.length,5,1000);
     arenaDeck.innerHTML="";
@@ -2114,3 +2132,42 @@ function campfire(){
         });
     }
 }
+
+function quitRun(){
+    if(run && !run.overBool){
+        if(game && !game.overBool){
+            game.itsOver();
+        }
+        else{
+            fader.style.animationDuration="";
+            fader.classList.add("fade");
+            closeItemModal();
+            run.overBool=true;
+            
+            setTimeout(function(){
+                menu.style.visibility="visible";
+                quitter.style.display="none";
+                run=null;
+                fader.classList.remove("fade");
+                hoveredTT=null;
+                tooltip.style.opacity=0;
+                tooltip.style.visibility="hidden";
+                map.style.visibility="hidden";
+
+                if(cleanup){
+                    cleanup();
+                    cleanup=null;
+                }
+            },1000);
+        }
+        return true;
+    }
+    return false;
+}
+
+const quitter=document.querySelector("#quit");
+quitter.addEventListener("click",function(){
+    if(quitRun()){
+        sendMsg(codeResign);
+    }
+});
