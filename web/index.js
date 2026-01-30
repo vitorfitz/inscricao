@@ -31,7 +31,7 @@ let deckPiles=[[null,null],[null,null]]
 let cardSpaces=null,boardOverlays=null;
 
 function updateBones(s,g=game){
-    boneSpans[+(s!=g.myTurn)].textContent="x"+g.bones[s];
+    boneSpans[+(s!=g.myTurn)].textContent="x"+(g.bones[s] == Infinity? "∞": g.bones[s]);
 }
 function spendEnergy(amt,turn=game.turn){
     if(game.energyConds[turn]>0 && calcCircuit(turn)!=null) return;
@@ -944,7 +944,12 @@ const manas=[c_squirrel,c_skeleton];
 
 // cartas act 3
 
-a_bone_horn.init([4,0],1,energy,"Bone Horn","Gasta 1 energia: ganhe 3 ossos.",async function(card){
+a_bone_horn.init([1,0],1,energy,"Bone Horn","Gasta 1 energia: ganhe 2 ossos.",async function(card){
+    game.bones[card.side]+=2;
+    updateBones(card.side);
+});
+
+a_bone_horn_unn.init([4,0],1,energy,"Bone Horn","Gasta 1 energia: ganhe 3 ossos.",async function(card){
     game.bones[card.side]+=3;
     updateBones(card.side);
 });
@@ -1668,10 +1673,12 @@ class Game{
         
         if(run){
             if(this.scales<=0){
-                run.life[game.myTurn]+=this.scales;
+                // run.life[game.myTurn]+=this.scales;
+                run.life[game.myTurn]-=1;
             }
             else{
-                run.life[1-game.myTurn]-=this.scales;
+                // run.life[1-game.myTurn]-=this.scales;
+                run.life[1-game.myTurn]-=1;
             }
         }
 
@@ -2351,7 +2358,7 @@ class Game{
                     break;
 
                 case codeBoneBounty:
-                    game.bones[this.turn]+=400;
+                    game.bones[this.turn]+=Infinity;
                     updateBones(this.turn,this);
                     break;
 

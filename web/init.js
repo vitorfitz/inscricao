@@ -660,6 +660,7 @@ const c_factory_cond=new Card();
 const c_energy_cond=new Card();
 
 const a_enlarge_unn=new VanillaActivated();
+const a_bone_horn_unn=new VanillaActivated();
 const a_stimulation=new VanillaActivated();
 const a_gamble=new VanillaActivated();
 const s_handy=new Sigil();

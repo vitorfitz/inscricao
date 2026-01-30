@@ -49,7 +49,7 @@ c_wolf.init_orig(2,3,2);
 c_zombie.init_orig(2,1,1);
 c_black_goat.init_orig(1,0,1);
 c_mantis.init_orig(1,1,1);
-c_bone_horn.init_orig(3,1,1);
+c_bone_horn.init_orig(3,1,1,[],a_bone_horn_unn);
 c_tomb_raider.init_orig(0,0,2);
 c_plasma.init_orig(2,0,3);
 c_bone_heap.init_orig(0,0,1,[],a_enlarge_unn);

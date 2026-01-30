@@ -702,7 +702,7 @@ resign.addEventListener("mouseleave",function(){
 const bsPopup=document.querySelector("#cut_the_bs");
 const bsBtn=bsPopup.querySelector("button");
 bsBtn.addEventListener("click",function(){
-    game.bones[game.myTurn]+=400;
+    game.bones[game.myTurn]+=Infinity;
     updateBones(game.myTurn);
     bsPopup.style.opacity="0";
     bsPopup.style.visibility="hidden";
@@ -747,21 +747,23 @@ function sacAnim(card,side,pos){
 }
 
 async function sacrifice(){
-    let catsAmongUs=false;
     let undied=[];
     for(let i=0; i<sacCards.length; i++){
         let fs=null;
+        console.log(sacCards[i]);
         for(let s of sacCards[i].sigils){
             if(s.funcs==s_free_sac || s.funcs==s_freer_sac){
                 fs=s;
                 break;
+            }
+            else if(game.turn==game.myTurn && game.necroCount>0 && selectedCard.hasSigil(s_fecundity) && selectedCard.card.element==blood && selectedCard.card.cost<=2 && s.funcs==s_undying && sacCards[i].card.element==bones && sacCards[i].card.cost<=3){
+                BSDetected();
             }
         }
         if(fs==null){
             sacCards[i].die();
         }
         else{
-            catsAmongUs=true;
             if(fs.funcs==s_free_sac) sacCards[i].damage(1,extSource);
             else{
                 fs.data.sacCounter++;
@@ -780,7 +782,6 @@ async function sacrifice(){
     }
     sacOverlays=[];
     sacCards=[];
-    return catsAmongUs;
 }
 
 let clickProm=null;
@@ -868,11 +869,7 @@ for(let h=0; h<cardSpacesBase[0].length; h++){
                 }
 
                 if(canProceed){
-                    const catsAmongUs=await sacrifice();
-                    // if(catsAmongUs && selectedCard.hasSigil(s_fecundity) && selectedCard.card.cost<=2){
-                    //     BSDetected();
-                    // }
-
+                    await sacrifice();
                     boards[0].classList.remove("cardsClickable");
                     hands[0].classList.remove("cardsClickable");
                     isSaccing=false;

@@ -123,8 +123,8 @@ function newRun(otherJSON,configs){
     updateHPs();
     updateDeck(1);
     updateItemDivs();
-    // cardPick(10,3,buffedCards);
-    cardPick(10,0,randomCards);
+    cardPick(10,3,buffedCards);
+    // cardPick(10,0,randomCards);
     fader.style.animationDuration=fadeTimer+"ms";
     quitter.style.display="";
 }
@@ -481,21 +481,21 @@ let sigilEstimates={};
     se[s_death_touch.id]={uselessAt0: true,mod:(pe)=>{
         if(pe.attack==0) {
             if(has(pe,s_quills)) pe.additive+=3.75;
-            pe.dt=1; return;
+            pe.dt=3; return;
         };
         if(has(pe,s_flying)) pe.dt=1+0.1/(pe.attack*(pe.attack+1)/2);
         else if(has(pe,s_bifurcated)) pe.dt=1+1.5/(pe.attack*(pe.attack+1)/2);
         else pe.dt=1+2/(pe.attack*(pe.attack+1)/2);
         pe.offense*=pe.dt;
     },boost:(pe)=>{
-        if(has(pe,s_sidestep) || has(pe,s_push) || has(pe,s_sq_spawner) || has(pe,s_skele_spawner) || has(pe,s_burrow) || has(pe,s_guardian)) pe.additive+=Math.max(0,Math.min(2.2,pe.dt-0.333)*pe.defense*0.2);
+        if(!(has(pe,s_brittle) && pe.attack>0) && has(pe,s_sidestep) || has(pe,s_push) || has(pe,s_sq_spawner) || has(pe,s_skele_spawner) || has(pe,s_burrow) || has(pe,s_guardian)) pe.additive+=Math.max(0,Math.min(2.2,pe.dt-0.333)*pe.defense*0.2);
     }};
     se[s_double_death.id]={mod:(pe)=>{
         pe.additiveExt+=3.9;
         pe.presence+=0.7;
     }};
     se[s_fecundity.id]={ext:(pe)=>{
-        pe.additiveExt+=Math.max(5,3+6.5/pe.res);
+        pe.additiveExt+=Math.max(4,3+6.5/pe.res);
     }};
     se[s_undying.id]={ext:(pe)=>{
         if(has(pe,s_worthy)) pe.additiveExt+=Math.max(5,3+6.5/pe.res);
@@ -517,7 +517,7 @@ let sigilEstimates={};
         pe.additiveExt+=Math.max(0,5-pe.res/2);
     }};
     se[s_flying.id]={uselessAt0: true,boost:(pe)=>{
-        if(pe.offense!=0) pe.additive+=((0.5+pe.defense)*(0.5+pe.offense))*0.28;
+        if(pe.offense!=0) pe.additive+=((0.5+pe.defense)*(0.5+pe.offense))*0.17+pe.offense**2*0.15;
     }};
     se[s_energy.id]={ext:(pe)=>{
        pe.res+=2.5/2**(pe.res/7.5+0.5);
@@ -527,9 +527,9 @@ let sigilEstimates={};
         pe.additive+=3-3*(1-0.7**pe.defense);
     }};
     se[s_reach.id]={boost:(pe)=>{
-        if(!has(pe,s_aquatic)){
-            if(has(pe,s_burrow)) pe.additive+=(pe.defense+1/3)/5;
-            else pe.additive+=(pe.defense+1)/8;
+        if(!has(pe,s_aquatic) && !(has(pe,s_brittle) && pe.attack>0)){
+            if(has(pe,s_burrow)) pe.additive+=(pe.defense+0.5)*0.21;
+            else pe.additive+=(pe.defense+2)*0.07;
         }
     }};
     se[s_sidestep.id]={boost:(pe)=>{
@@ -555,13 +555,11 @@ let sigilEstimates={};
         if(!has(pe,s_aquatic) && !(has(pe,s_brittle) && pe.attack>0)){
             if(has(pe,s_death_touch)){
                 if(!has(pe,s_burrow)){
-                    pe.additive+=((1+pe.defense)*(Math.max(1-5*(pe.defense),0)+pe.offense/pe.dt))*0.4;
+                    pe.additive+=((pe.defense)*(4*0.75**(pe.defense-1)+Math.max(1,pe.offense)/pe.dt))*0.4;
                 }
             }
             else{
-                if(has(pe,s_burrow)){
-                    pe.additive+=(pe.defense+0.5+1.5**Math.min(10,pe.defense)/15)*0.64;
-                }
+                if(has(pe,s_burrow) && !(has(pe,s_brittle) && pe.attack>0)){}
                 else{
                     pe.additive+=pe.defense*0.25+0.5;
                 }
@@ -569,32 +567,36 @@ let sigilEstimates={};
         }
     }};
     se[s_aquatic.id]={aquatic:(pe)=>{
-        if(!(has(pe,s_brittle) && pe.attack>0)){
+        if(!((has(pe,s_brittle) && pe.attack>0) && pe.attack>0)){
             pe.defense=pe.offense+pe.presence+0.1*(pe.hp-1);
-            if(has(pe,s_stinky)) pe.defense*=1.7;
+            if(has(pe,s_stinky)) pe.defense*=1.5;
             pe.additive+=pe.presence*4;
         }
     }};
     se[s_worthy.id]={ext:(pe)=>{
-        if(!(has(pe,s_free_sac) && pe.hp>1)) pe.res+=6.5/2**((pe.res-pe.hp/pe.res*2)/6.5)+(pe.hp>5? 0: Math.max(0,((5-pe.hp)**1.5)*0.15));
+        if(!(has(pe,s_free_sac) && pe.hp>1)){
+            pe.res+=7.5/2**((pe.res-1)/(pe.hp+1)*0.8);
+        }
     }};
     se[s_tutor.id]={boost:(pe)=>{
         pe.additiveExt+=6;
     }};
     se[s_burrow.id]={mod:(pe)=>{
-        pe.defense*=0.75;
-    },boost:(pe)=>{
+        pe.defense*=0.5;
+    },
+    boost:(pe)=>{
+        if((has(pe,s_brittle) && pe.attack>0)) return;
         if(!has(pe,s_aquatic)){
-            let mult=0.9;
-            if(has(pe,s_death_touch) && has(pe,s_quills)) {mult+=1.2; pe.additive-=Math.min(pe.defense,2);}
-            if(has(pe,s_beehive)) mult+=0.5;
-            pe.additive+=mult*(pe.defense+(1.5**Math.min(13,pe.defense*mult))/60);
+            let mult=1;
+            if(has(pe,s_quills)) mult+=has(pe,s_death_touch)? 2: 0.8;
+            if(has(pe,s_beehive)) mult+=0.667;
+            pe.additive+=1.75*mult*pe.defense*1.02**(pe.defense);
         }
     }};
     se[s_sniper.id]={uselessAt0: true,boost:(pe)=>{
         if(pe.offense!=0){
             if(!has(pe,s_flying)) pe.additive+=((1+pe.defense)*(1+pe.offense))*0.36;
-            else pe.additive+=(pe.offense)*0.2;
+            else pe.additive+=(pe.offense)*0.05;
         }
     }};
     se[s_dam.id]={boost:(pe)=>{
@@ -604,7 +606,7 @@ let sigilEstimates={};
     }};
     se[s_alpha.id]={mod:(pe)=>{
         pe.additive+=1.8;
-        if(has(pe,s_guardian) || has(pe,s_burrow)) pe.presence+=0.3;
+        if(has(pe,s_guardian) || (has(pe,s_burrow) && !(has(pe,s_brittle) && pe.attack>0))) pe.presence+=0.3;
         else pe.presence+=0.6;
     }};
     se[s_stinky.id]={mod:(pe)=>{
@@ -613,7 +615,7 @@ let sigilEstimates={};
     }};
     se[s_beehive.id]={mod:(pe)=>{
         if(!has(pe,s_aquatic) && !(has(pe,s_brittle) && pe.attack>0)){
-            pe.additive+=((pe.defense+0.5)**0.55)*2.2;
+            pe.additive+=((pe.defense+0.5)**0.6)*1.4;
         }
     }};
 }
@@ -681,9 +683,10 @@ class PowerEstimate{
             res+=5*(0.95**excessHP-1)/(0.95-1);
         }
 
-        if(this.offense>5) res+=(this.offense-5)**2.2/10;
+        if(this.offense>5) res+=Math.min((this.offense-5)**3/12,12);
         res+=this.additive;
         res+=this.defense*(this.presence);
+        this.res0=res;
         if(res<3) res+=(3-res)/2;
         this.res=res;
 
@@ -719,9 +722,9 @@ function correctPE(est,chosenEl,chosenCost,sigilObjs){
 }
 
 const costToPower=[
-    [3,4.5,6,7.5,9,11,13,15,17,19,21,23,25],
+    [3,4.5,6,7.5,9,11,13,15,17.5,20,22.5,25],
     [3,6.5,9.5,14.5,25],
-    [3,3.5,4.5,5.5,7,8.5,10]
+    [3,3.5,4.5,5.5,7,9,11.5]
 ];
 function elToPosition(el){
     switch(el){
@@ -747,8 +750,8 @@ function checkAllowed(sigs){
     return true;
 }
 
-const numMono=5;
-const numDual=5;
+const numMono=10;
+const numDual=10;
 function buffedCards(){
     const copy=[...eligibleCards];
     shuffle(copy,pickSpaces.length);
@@ -876,10 +879,10 @@ const battleNode=new NodeType("Batalha",null,"battle.webp",function(){
         },fadeTimer));
 
         if(game) await game.over;
-        if((run.life[0]<=3) != (run.life[1]<=3)){
-            if(run.life[0]<=3) run.myTurn=0;
-            else if(run.life[1]<=3) run.myTurn=1;
-        }
+        // if((run.life[0]<=3) != (run.life[1]<=3)){
+        //     if(run.life[0]<=3) run.myTurn=0;
+        //     else if(run.life[1]<=3) run.myTurn=1;
+        // }
         game=new Game(run.myTurn==0? run.manas: [run.manas[1],run.manas[0]],run.myTurn,run.tippingPoint,run.cardsPerTurn);
         game.freshStart(run.fdeck,run.oppDeckSize,10);
         game.initConstants();
@@ -1101,8 +1104,9 @@ async function renderMap(len=2,xSpacing=150,ySpacing=115,conns=3){
         lots.push(prob);
     }
     for(let i=1; i<mapNodes.length-1; i++){
-        const picked=pickRandom(lots,totalLots,3);
+        // const picked=pickRandom(lots,totalLots,3);
         // const picked=[itemNode.id,itemNode.id,itemNode.id];
+        const picked=[buildNode.id,buildNode.id,buildNode.id];
         for(let j=0; j<width; j++){
             const n=mapNodes[i][j];
             if(n){
