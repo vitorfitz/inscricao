@@ -1121,6 +1121,38 @@ class Deck {
         this.name = "";
         this.mode = mode_exp;
     }
+
+    toJSON() {
+        const compact = {};
+        for (let i = 0; i < this.cards.length; i++) {
+            if (this.cards[i] > 0) compact[i] = this.cards[i];
+        }
+        return { name: this.name, mana: this.mana, mode: this.mode, cards: compact };
+    }
+
+    static fromJSON(obj) {
+        const deck = new Deck();
+        // Handle legacy format (raw object with cards array)
+        if (Array.isArray(obj.cards)) {
+            deck.cards = obj.cards;
+            deck.mana = obj.mana || 0;
+            deck.name = obj.name || "";
+            deck.mode = obj.mode ?? mode_exp;
+            deck.size = deck.cards.reduce((a, b) => a + b, 0);
+            return deck;
+        }
+        // New compact format
+        deck.name = obj.name;
+        deck.mana = obj.mana;
+        deck.mode = obj.mode ?? mode_exp;
+        const len = deck.mode === mode_exp ? cards.length : origCards.length;
+        deck.cards = new Array(len).fill(0);
+        for (const [id, count] of Object.entries(obj.cards)) {
+            deck.cards[id] = count;
+            deck.size += count;
+        }
+        return deck;
+    }
 }
 
 function deckToArray(d) {
@@ -1264,21 +1296,19 @@ function cardToTableRow(i) {
 }
 
 for (let i = 0; i < deckSlots; i++) {
-    const saved = localStorage.getItem("deck" + i);
+    let saved = localStorage.getItem("deck" + i);
     if (saved != null) {
-        decks[i] = JSON.parse(saved);
-        if (!("mode" in decks[i])) {
-            decks[i].mode = mode_exp;
+        try {
+            decks[i] = Deck.fromJSON(JSON.parse(saved));
         }
-        const l = decks[i].mode == mode_exp ? cards.length : origCards.length;
-        for (let j = decks[i].cards.length; j < l; j++) {
-            decks[i].cards[j] = 0;
+        catch (e) {
+            saved = null;
         }
     }
-    else {
+    if (saved == null) {
         decks[i] = new Deck();
         decks[i].name = "Unnamed " + i;
-        decks[i].cards = Array.from({ length: cards.length }).fill(0);
+        decks[i].cards = new Array(cards.length).fill(0);
     }
 }
 
