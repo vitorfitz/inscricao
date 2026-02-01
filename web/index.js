@@ -216,7 +216,7 @@ function initDirection(card, gs) {
     }
 
     gs.el.style.transition = "transform 200ms linear";
-    moverTrans(gs.el, direction);
+    anim.enqueue('flipDirection', { el: gs.el, direction });
     return { direction, el: gs.el };
 }
 
@@ -401,7 +401,7 @@ s_push.onTurnEnded.push(new Listener(listen_ally, async function (me, memory) {
     let p = canPush(me, memory.direction);
     if (p == -1) {
         memory.direction *= -1;
-        anim.enqueue('flipDirection', { el: memory.el, direction: memory.direction, myTurn: game.myTurn });
+        anim.enqueue('flipDirection', { el: memory.el, direction: memory.direction });
         p = canPush(me, memory.direction);
     }
     if (p != -1) {
@@ -461,7 +461,7 @@ async function tutor(cb) {
 
     if (game.deck.length > 0) {
         await new Promise((resolve) => {
-            setTimeout(resolve, 250);
+            setTimeout(resolve, 100);
         });
 
         tutorModal.style.visibility = "visible";
@@ -510,11 +510,13 @@ const tutorDiv = document.querySelector("#tutor");
 s_tutor.init([3, 6], "Hoarder", "Ao jogar, compre uma carta do seu deck à sua escolha.");
 s_tutor.onCardPlayed.push(new Listener(listen_me, async function (me) {
     if (me.side == game.myTurn) {
-        await tutor((i) => {
-            game.deck.splice(i, 1);
-            shuffle(game.deck);
-            drawAnim[0].enqueue('drawDeckShadow', { uiSide: 0, manaOrCard: 0, cards: game.deck.length });
-            game.addCardToHand(game.deck[i]);
+        await anim.enqueue("tutorModal", {
+            cb: (i) => {
+                game.deck.splice(i, 1);
+                shuffle(game.deck);
+                drawAnim[0].enqueue('drawDeckShadow', { uiSide: 0, manaOrCard: 0, cards: game.deck.length });
+                game.addCardToHand(game.deck[i]);
+            }
         });
     }
     else {
@@ -543,74 +545,7 @@ s_sidestep.init([5, 6], null, "Sprinter", "Move no fim do seu turno.");
 
 s_sniper.init([6, 6], "Sniper", "Você escolhe onde essa carta ataca.");
 s_sniper.modifyTargets = async function (me) {
-    if (game.targets.length > 0) {
-        if (me.side != game.myTurn) {
-            let msg = await Promise.any([getNextMsg(), game.abort]);
-            if (game.overBool) return;
-
-            let targetsStr = msg.substring(2);
-            game.targets = [];
-            if (targetsStr == "") {
-                return;
-            }
-
-            const spl = targetsStr.split(" ");
-            for (let i = 0; i < spl.length; i++) {
-                game.targets.push(parseInt(spl[i]));
-            }
-        }
-        else {
-            const rect = boards[1].getBoundingClientRect();
-            sniperOverlay.style.top = rect.top - nuhuhPadding + "px";
-            sniperOverlay.style.left = rect.left - nuhuhPadding + "px";
-            nuhuhSniper.style.transitionDuration = "300ms";
-            nuhuhSniper.style.opacity = "0.5";
-
-            let dmgOverlays = [], dmgEvents = [];
-            const numTargets = game.targets.length;
-            game.targets = [];
-            let complete;
-
-            for (let i = 0; i < cardSpaces[1].length; i++) {
-                const dmgOverlay = document.createElement("canvas");
-                dmgOverlays.push(dmgOverlay);
-                dmgOverlay.width = i_cards.dims[0] * 2;
-                dmgOverlay.height = i_cards.dims[1] * 2;
-                i_cards.draw(dmgOverlay.getContext("2d"), 2, 1, 3, 0, 0);
-                boardOverlays[1][i].appendChild(dmgOverlay);
-                dmgOverlay.className = "visibleOnHover";
-
-                dmgEvents.push(() => {
-                    if (game.targets.length == numTargets) return;
-                    game.targets.push(i);
-                    if (game.targets.length == numTargets) {
-                        complete();
-                        return;
-                    }
-                });
-                cardSpaces[1][i].parentNode.parentNode.addEventListener("click", dmgEvents[i]);
-            }
-
-            await Promise.any([game.over, new Promise((resolve) => {
-                complete = resolve;
-            })]);
-            for (let i = 0; i < cardSpaces[1].length; i++) {
-                cardSpaces[1][i].parentNode.parentNode.removeEventListener("click", dmgEvents[i]);
-            }
-            for (let i = 0; i < dmgOverlays.length; i++) {
-                dmgOverlays[i].style.opacity = 0;
-            }
-            setTimeout(function () {
-                for (let i = 0; i < dmgOverlays.length; i++) {
-                    dmgOverlays[i].remove();
-                }
-            }, 150);
-
-            if (!game.overBool) sendMsg(codeDecision + " " + game.targets.join(" "));
-            nuhuhSniper.style.transitionDuration = "100ms";
-            nuhuhSniper.style.opacity = "0";
-        }
-    }
+    await anim.enqueue('sniperModifyTargets', { me });
 }
 
 // s_blood_lust.init([0,7],"Blood Lust","Ganha +1 ataque ao matar uma carta.",function(){
@@ -926,7 +861,7 @@ const tooltip = document.querySelector("#tooltip");
 let hoveredTT = null;
 
 c_squirrel.init("Squirrel", 0, 0, 1, blood, [], null, [8, 5], false);
-c_skeleton.init("Skeleton", 0, 1, 1, bones, [s_brittle, s_flying], null, [7, 11], false);
+c_skeleton.init("Skeleton", 0, 1, 1, bones, [s_brittle], null, [7, 11], false);
 const manas = [c_squirrel, c_skeleton];
 
 // cartas act 3
@@ -1321,7 +1256,10 @@ class GameCard {
     }
 
     damage(dmg, src, delay = 0) {
-        if (this.health > 0) game.dmgQueue.push({ card: this, dmg, src, delay });
+        if (this.health > 0) {
+            game.dmgQueue.push({ card: this, dmg, src, delay });
+            if (src instanceof GameCard && src !== this) game.needsDelay = true;
+        }
     }
 
     async place(pos, t = game.turn, from_hand = false, delay = 0) {
@@ -1382,7 +1320,7 @@ class GameCard {
 
         if (old_pos == null) {
             for (let s of this.sigils) {
-                this.addListener(s);
+                if (!s.totem) this.addListener(s);
             }
         }
 
@@ -1408,7 +1346,8 @@ class GameCard {
             card: this.canvas,
             pos: this.pos,
             pl: +(this.side == game.myTurn),
-            target
+            target,
+            canBlock: game.canBlock
         });
     }
 
@@ -1537,12 +1476,12 @@ class Game {
         this.cardsPerTurn = cardsPerTurn;
         this.tippingPoint = tippingPoint;
 
-        if (run) {
-            this.tips = [Math.min(this.tippingPoint, run.life[0]), Math.min(this.tippingPoint, run.life[1])];
-        }
-        else {
-            this.tips = [this.tippingPoint, this.tippingPoint];
-        }
+        // if (run) {
+        //     this.tips = [Math.min(this.tippingPoint, run.life[0]), Math.min(this.tippingPoint, run.life[1])];
+        // }
+        // else {
+        this.tips = [this.tippingPoint, this.tippingPoint];
+        // }
 
         this.board = [];
         this.buffs = [];
@@ -1632,10 +1571,10 @@ class Game {
         this.canBlock = true;
         this.intercepted = false;
         this.targets = null;
-        this.isResolvingDamage = false;
-        this.isResolvingDeaths = false;
-        this.attacked = null;
+        this.needsDelay = false;
         this.turnCount = 0;
+        this.sacCards = [];
+        this.sacPos = [];
 
         this.BSDetector = 0;
         this.necroCount = 0;
@@ -1704,7 +1643,7 @@ class Game {
             scalePartial = 0;
             toConsume = 0;
             unselectCard();
-            sacCards = [];
+            game.sacCards = [];
             sacOverlays = [];
 
             nuhuh.style.transitionDuration = "100ms";
@@ -1715,7 +1654,6 @@ class Game {
             playScr.style.visibility = "hidden";
             if (!run || (run.life[0] <= 0 || run.life[1] <= 0)) {
                 menu.style.visibility = "visible";
-                quitter.style.display = "none";
                 run = null;
             }
             else {
@@ -1735,6 +1673,7 @@ class Game {
                 updateHPs();
                 updateDeck(1);
                 updateItemDivs();
+                quitter.style.display = "";
                 mapWrapper.innerHTML = "";
                 // const mCanvas=await renderMap();
                 const mCanvas = await renderMap(run.getMapLen());
@@ -1795,10 +1734,10 @@ class Game {
     }
 
     async resolveDeaths() {
-        if (this.isResolvingDeaths || this.deathQueue.length == 0) return;
-        this.isResolvingDeaths = true;
+        if (this.deathQueue.length == 0) return;
 
-        for (let i = 0; i < this.deathQueue.length; i++) {
+        let lengthAtStart = this.deathQueue.length;
+        for (let i = 0; i < lengthAtStart; i++) {
             let card = this.deathQueue[i];
             if (!card.inGame) continue;
             //console.log("<DEATH "+card.debugInfo());
@@ -1810,7 +1749,7 @@ class Game {
                     if (f.type == listen_me) {
                         //console.log("<ONDEATH ABILITY "+card.debugInfo());
                         await f.func(card, card, s.data);
-                        await game.resolve();
+                        game.sortListeners();
                         //console.log(">ONDEATH ABILITY "+card.debugInfo());
                     }
                 }
@@ -1819,23 +1758,23 @@ class Game {
             card.inGame = false;
 
             for (let ref of listenerRefs) {
-                for (let i = 0; i < 2; i++) {
+                for (let j = 0; j < 2; j++) {
                     let l2 = [];
-                    a: for (let l of this[ref][i]) {
-                        for (let j = 0; j < this.deathQueue.length; j++) {
-                            if (l.caller == this.deathQueue[j]) {
+                    a: for (let l of this[ref][j]) {
+                        for (let k = 0; k < lengthAtStart; k++) {
+                            if (l.caller == this.deathQueue[k]) {
                                 continue a;
                             }
                         }
-                        if (ref == "deathListeners" && i == card.side) {
+                        if (ref == "deathListeners" && j == card.side) {
                             //console.log("<ONDEATH ABILITY "+l.caller.debugInfo());
                             await l.func(l.caller, card, l.data);
-                            await game.resolve();
+                            game.sortListeners();
                             //console.log(">ONDEATH ABILITY "+l.caller.debugInfo());
                         }
                         l2.push(l);
                     }
-                    this[ref][i] = l2;
+                    this[ref][j] = l2;
                 }
             }
 
@@ -1846,24 +1785,33 @@ class Game {
             //console.log(">DEATH "+card.debugInfo());
         }
 
-        this.deathQueue = [];
-        this.isResolvingDeaths = false;
+        if (this.needsDelay) {
+            anim.delay(500);
+            this.needsDelay = false;
+        }
+        this.deathQueue.splice(0, lengthAtStart);
         updateBones(0);
         updateBones(1);
-        await this.resolveDamage();
+        if (this.dmgQueue.length > 0 || this.deathQueue.length > 0) {
+            await this.resolveDamage();
+        }
     }
 
     async resolveDamage() {
-        if (this.isResolvingDamage) return;
         if (this.dmgQueue.length == 0) {
             if (this.deathQueue.length > 0) {
                 await this.resolveDeaths();
             }
+            if (this.needsDelay) {
+                anim.delay(500);
+                this.needsDelay = false;
+            }
             return;
         }
 
-        this.isResolvingDamage = true;
-        for (let h = 0; h < this.dmgQueue.length; h++) {
+        let lengthAtStart = this.dmgQueue.length;
+        console.log("[resolveDamage] Processing " + lengthAtStart + " damage events");
+        for (let h = 0; h < lengthAtStart; h++) {
             const card = this.dmgQueue[h].card;
             if (card.health <= 0 || !card.inGame) continue;
             //console.log("<DAMAGE phase 1 "+card.debugInfo());
@@ -1871,7 +1819,7 @@ class Game {
             for (let s of card.sigils) {
                 for (let f of s.funcs.onReceivedDmg) {
                     this.dmgQueue[h].dmg = await f.func(this.dmgQueue[h].dmg, card, card, s.data);
-                    await game.resolve();
+                    game.sortListeners();
                 }
             }
 
@@ -1883,55 +1831,49 @@ class Game {
                 }
                 //console.log("<ONDAMAGE ABILITY "+l.caller.debugInfo());
                 this.dmgQueue[h].dmg = await l.func(this.dmgQueue[h].dmg, l.caller, card, l.data);
-                await game.resolve();
+                game.sortListeners();
                 //console.log(">ONDAMAGE ABILITY "+l.caller.debugInfo());
             }
             //console.log(">DAMAGE phase 1 "+card.debugInfo());
         }
 
-        let q2 = [];
-        for (let h = 0; h < this.dmgQueue.length; h++) {
+        let validEvents = [];
+        for (let h = 0; h < lengthAtStart; h++) {
             const card = this.dmgQueue[h].card;
             if (card.health > 0 && card.inGame && this.dmgQueue[h].dmg > 0) {
-                q2.push(this.dmgQueue[h]);
+                validEvents.push(this.dmgQueue[h]);
             }
         }
 
-        this.dmgQueue = q2;
-
-        for (let h = 0; h < this.dmgQueue.length; h++) {
-            const card = this.dmgQueue[h].card;
+        for (let h = 0; h < validEvents.length; h++) {
+            const card = validEvents[h].card;
             //console.log("<DAMAGE phase 2 "+card.debugInfo());
 
-            if (this.dmgQueue[h].src instanceof GameCard) {
-                for (let s of this.dmgQueue[h].src.sigils) {
+            if (validEvents[h].src instanceof GameCard) {
+                for (let s of validEvents[h].src.sigils) {
                     if (s.funcs.onDealtDmg != null) {
-                        //console.log("<ONDEALT ABILITY "+this.dmgQueue[h].src.debugInfo());
-                        this.dmgQueue[h].dmg = await s.funcs.onDealtDmg(this.dmgQueue[h].dmg, this.dmgQueue[h].src, card, s.data);
-                        await game.resolve();
-                        //console.log(">ONDEALT ABILITY "+this.dmgQueue[h].src.debugInfo());
+                        //console.log("<ONDEALT ABILITY "+validEvents[h].src.debugInfo());
+                        validEvents[h].dmg = await s.funcs.onDealtDmg(validEvents[h].dmg, validEvents[h].src, card, s.data);
+                        game.sortListeners();
+                        //console.log(">ONDEALT ABILITY "+validEvents[h].src.debugInfo());
                     }
                 }
             }
 
-            card.health -= this.dmgQueue[h].dmg;
+            card.health -= validEvents[h].dmg;
             if (card.health <= 0) {
                 this.deathQueue.push(card);
             }
 
-            card.queueStatUpdate(1, card.health, this.dmgQueue[h].delay);
-            if (this.dmgQueue[h].src != extSource) {
-                anim.enqueue('damage', { pl: +(card.side != game.myTurn), pos: card.pos, delay: this.dmgQueue[h].delay });
+            card.queueStatUpdate(1, card.health, validEvents[h].delay);
+            if (validEvents[h].src != extSource) {
+                anim.enqueue('damage', { pl: +(card.side != game.myTurn), pos: card.pos, delay: validEvents[h].delay });
             }
             //console.log(">DAMAGE phase 2 "+card.debugInfo());
         }
 
-        anim.delay(500);
-        this.dmgQueue = [];
-        this.attacked = null;
-        this.isResolvingDamage = false;
-        await this.resolveDeaths();
-        console.log("resolved damage");
+        this.dmgQueue.splice(0, lengthAtStart);
+        await this.resolveDamage();
     }
 
     async resolve() {
@@ -2040,7 +1982,8 @@ class Game {
             }
             else {
                 card = this.deck.pop();
-                // card = c_bullfrog;
+                // card = c_mrs_bomb;
+                card = Math.random() < 0.5 ? c_cat : c_elk;
                 cardsLeft = this.deck.length;
             }
         }
@@ -2108,15 +2051,7 @@ class Game {
                 for (let el of c.totemEls) {
                     const ind = c.sigilEls.indexOf(el);
                     if (ind == -1) continue;
-                    el.style.opacity = 0;
-                    setTimeout(function () {
-                        el.remove();
-                    }, 300);
-                    if (hoveredTT == el) {
-                        hoveredTT = null;
-                        hoveredTT.style.opacity = 0;
-                        hoveredTT.style.visibility = "hidden";
-                    }
+                    anim.enqueue('fadeOutTotemSigil', { el });
                     c.sigilEls.splice(ind, 1);
                 }
 
@@ -2239,9 +2174,10 @@ class Game {
                             while (c == null) {
                                 c = this.board[this.turn][sacPos];
                             }
-                            sacAnim(c, 1, sacPos);
+                            sacAnim(1, sacPos);
+                            game.sacCards.push(c);
                         }
-                        await sacrifice(true);
+                        await sacrifice();
                         await game.resolve();
                     }
 

@@ -207,7 +207,7 @@ function unselectCard() {
     clearInterval(animationIntv);
     selectedCard = null;
 
-    for (let i = 0; i < sacCards.length; i++) {
+    for (let i = 0; i < game.sacCards.length; i++) {
         sacOverlays[i].style.opacity = 0;
         const aaa = sacOverlays[i];
         setTimeout(function () {
@@ -215,11 +215,11 @@ function unselectCard() {
         }, 120);
     }
     sacs = 0;
-    sacPos = [];
+    game.sacPos = [];
     boards[0].classList.remove("cardsClickable");
     boards[0].classList.remove("spacesClickable");
     sacOverlays = [];
-    sacCards = [];
+    game.sacCards = [];
 }
 
 function selectCard(card) {
@@ -251,45 +251,7 @@ function playCard(card, pl, target, nc = null) {
 }
 
 function unplayCard(pl, target) {
-    hoveredTT = null;
-    tooltip.style.opacity = 0;
-    tooltip.style.visibility = "hidden";
-
-    const card = cardSpaces[pl][target].firstElementChild;
-    card.classList.add("suppressEvents");
-
-    const div = document.createElement("div");
-    div.className = "ghostCard noTrans";
-    hands[pl].appendChild(div);
-
-    const myRect = card.getBoundingClientRect();
-    const handRect = hands[pl].getBoundingClientRect();
-    const handSize = hands[pl].children.length - 1;
-    let margin = calcMargin(hands[pl], handSize);
-    const targetRect = {
-        top: handRect.top,
-        left: handRect.left + handSize * (2 * cardWidth + margin) - margin
-    }
-
-    div.style.width = "0px";
-    div.style.marginRight = defaultMargin - margin;
-    void div.offsetHeight;
-    div.classList.remove("noTrans");
-    div.style.width = "84px";
-    div.style.marginRight = "0px";
-
-    let nc = pl == 1 ? filled_canvas(2, i_cards, [2, 2]) : null;
-    let trans = createTransporter(card, nc, myRect, targetRect, playScr);
-
-    setTimeout(function () {
-        trans.remove();
-        hands[pl].replaceChild(nc ?? trans.firstElementChild, div);
-        setTimeout(function () {
-            card.classList.remove("suppressEvents");
-        }, 200);
-    }, 200);
-
-    return card;
+    return anim.enqueue('unplayCard', { pl, target });
 }
 
 function oneWithNothing(pl) {
@@ -424,62 +386,45 @@ function BSDetected() {
 
 let sacs = 0;
 let sacOverlays = [];
-let sacCards = [];
-let sacPos = [];
 let isSaccing = true, hooked = false;
 
-function sacAnim(card, side, pos) {
-    const sacOverlay = document.createElement("canvas");
-    sacOverlay.style.transitionDuration = "100ms";
-    sacOverlay.width = i_cards.dims[0] * 2;
-    sacOverlay.height = i_cards.dims[1] * 2;
-    i_cards.draw(sacOverlay.getContext("2d"), 2, 0, 2, 0, 0);
-    boardOverlays[side][pos].appendChild(sacOverlay);
-    void sacOverlay.offsetHeight;
-    sacOverlay.style.opacity = 0.75;
-    sacOverlays.push(sacOverlay);
-    sacCards.push(card);
-    if (side == 0) sacPos.push(card.pos);
+function sacAnim(side, pos) {
+    anim.enqueue('sacAnim', { side, pos });
 }
 
-async function sacrifice(queued = false) {
+async function sacrifice() {
     let undied = [];
-    for (let i = 0; i < sacCards.length; i++) {
+    for (let i = 0; i < game.sacCards.length; i++) {
         let fs = null;
-        console.log(sacCards[i]);
-        for (let s of sacCards[i].sigils) {
+        for (let s of game.sacCards[i].sigils) {
             if (s.funcs == s_free_sac || s.funcs == s_freer_sac) {
                 fs = s;
                 break;
             }
-            else if (game.turn == game.myTurn && game.necroCount > 0 && selectedCard.hasSigil(s_fecundity) && selectedCard.card.element == blood && selectedCard.card.cost <= 2 && s.funcs == s_undying && sacCards[i].card.element == bones && sacCards[i].card.cost <= 3) {
+            else if (game.turn == game.myTurn && game.necroCount > 0 && selectedCard.hasSigil(s_fecundity) && selectedCard.card.element == blood && selectedCard.card.cost <= 2 && s.funcs == s_undying && game.sacCards[i].card.element == bones && game.sacCards[i].card.cost <= 3) {
                 BSDetected();
             }
         }
         if (fs == null) {
-            sacCards[i].die();
+            game.sacCards[i].die();
         }
         else {
-            if (fs.funcs == s_free_sac) sacCards[i].damage(1, extSource);
+            if (fs.funcs == s_free_sac) game.sacCards[i].damage(1, extSource);
             else {
                 fs.data.sacCounter++;
-                if (fs.data.sacCounter >= 9 && sacCards[i].card == c_cat) {
-                    undied.push(sacCards[i]);
+                if (fs.data.sacCounter >= 9 && game.sacCards[i].card == c_cat) {
+                    undied.push(game.sacCards[i]);
                 }
             }
         }
-        const overlay = sacOverlays[i];
-        if (queued) {
-            anim.enqueue('removeSacOverlay', { overlay });
-        } else {
-            setTimeout(() => overlay.remove(), 600);
-        }
+
+        anim.enqueue('sacFadeOut', { overlay: sacOverlays[i], fade: fs != null });
     }
     for (let u of undied) {
         await replace(u, c_undead_cat);
     }
     sacOverlays = [];
-    sacCards = [];
+    game.sacCards = [];
 }
 
 let clickProm = null;
@@ -531,11 +476,11 @@ for (let h = 0; h < cardSpacesBase[0].length; h++) {
             }
 
             const value = card.hasSigil(s_worthy) ? 3 : 1;
-            const ind = sacCards.indexOf(card);
+            const ind = game.sacCards.indexOf(card);
             if (ind != -1) {
                 sacs -= value;
-                sacCards.splice(ind, 1);
-                sacPos.splice(ind, 1);
+                game.sacCards.splice(ind, 1);
+                game.sacPos.splice(ind, 1);
                 const sacOverlay = sacOverlays[ind];
                 sacOverlays.splice(ind, 1);
                 sacOverlay.style.opacity = 0;
@@ -546,12 +491,14 @@ for (let h = 0; h < cardSpacesBase[0].length; h++) {
             }
 
             sacs += value;
-            sacAnim(card, 0, i);
+            sacAnim(0, i);
+            game.sacCards.push(card);
+            game.sacPos.push(card.pos);
 
             if (sacs >= selectedCard.card.getCost()) {
                 let canProceed = false;
-                for (let i = 0; i < sacCards.length; i++) {
-                    if (!sacCards[i].hasSigil(s_freer_sac) && (!sacCards[i].hasSigil(s_free_sac) || sacCards[i].health == 1)) {
+                for (let i = 0; i < game.sacCards.length; i++) {
+                    if (!game.sacCards[i].hasSigil(s_freer_sac) && (!game.sacCards[i].hasSigil(s_free_sac) || game.sacCards[i].health == 1)) {
                         canProceed = true;
                         break;
                     }
@@ -580,7 +527,6 @@ for (let h = 0; h < cardSpacesBase[0].length; h++) {
             }
         }
         else {
-            console.log("here i am", blockActions);
             if ((blockActions && isSaccing) || blockActions > 1 || game.board[game.myTurn][i] != null) return;
             const played = selectedCard;
             const handIndex = game.hand.indexOf(selectedCard);
@@ -602,9 +548,9 @@ for (let h = 0; h < cardSpacesBase[0].length; h++) {
                 prefix += "\n";
             }
 
-            const msgVals = [codePlayedCard, i, handIndex, ...played.toSocket(), ...sacPos];
+            const msgVals = [codePlayedCard, i, handIndex, ...played.toSocket(), ...game.sacPos];
             sendMsg(prefix + msgVals.join(" "));
-            sacPos = [];
+            game.sacPos = [];
 
             await selectedCard.play(i);
             if (!isSaccing) {
@@ -700,13 +646,13 @@ function playScreen() {
             hearts[i].textContent = run.life[1 - i];
         }
         updateItemDivs(gameItemDivs);
-        resign.classList.remove("selectable");
+        // resign.classList.remove("selectable");
     }
     else {
         for (let i = 0; i < 2; i++) {
             act1Stuff[i].style.display = "none";
         }
-        resign.classList.add("selectable");
+        // resign.classList.add("selectable");
     }
 
     const ctx = scaleCanvas.getContext("2d");

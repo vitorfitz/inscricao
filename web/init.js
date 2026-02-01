@@ -167,7 +167,7 @@ class SSpawner extends Sigil {
             let att = pos + memory.direction;
             if (att >= game.lanes || att < 0 || game.board[game.turn][att] != null) {
                 memory.direction *= -1;
-                anim.enqueue('flipDirection', { el: memory.el, direction: memory.direction, myTurn: game.myTurn });
+                anim.enqueue('flipDirection', { el: memory.el, direction: memory.direction });
                 att = pos + memory.direction;
                 if (att >= game.lanes || att < 0 || game.board[game.turn][att] != null) { att = pos; }
             }
