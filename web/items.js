@@ -131,11 +131,9 @@ const lenses=lensEl.children;
 for(let i=0; i<lenses.length; i++){
     lenses[i].addEventListener("click",async function(){
         if(run && game.turn==game.myTurn && blockActions==1 && run.items[i]==lensItem && run.usedItems.indexOf(i)==-1){
-            blockActions++;
-            updateBlockActions();
+            updateBlockActions(1);
             await lensItem.myFunc(i);
-            blockActions--;
-            updateBlockActions();
+            updateBlockActions(-1);
         }
     });
 }
@@ -196,8 +194,7 @@ async function(i,args){
             selectCard(card);
             isSaccing=false;
             hooked=true;
-            blockActions++;
-            updateBlockActions();
+            updateBlockActions(1);
         }
     })]);
 },

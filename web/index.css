@@ -1422,7 +1422,7 @@ canvas {
     /* transform: translateX(-50%); */
     transition-property: top, bottom;
     transition-timing-function: ease-out;
-    transition-duration: 500ms;
+    transition-duration: 450ms;
 }
 
 #game>.transporter {

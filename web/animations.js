@@ -9,7 +9,8 @@ class AnimationManager {
     }
 
     enqueue(type, data) {
-        console.log("enqueued", type, data);
+        // console.trace();
+        // console.log("enqueued", type, data);
         const id = this.nextId++;
         this.queue.push({ type, data, id });
         if (!this.isProcessing) this.process();
@@ -41,13 +42,16 @@ class AnimationManager {
                 continue;
             }
             await this.execute(type, data);
+            this.lastType = type;
+            this.lastTime = Date.now();
         }
         this.isProcessing = false;
+        this.lastType = null;
     }
 
     async execute(type, data) {
         const handler = AnimationManager.handlers[type];
-        if (handler) await handler(data);
+        if (handler) await handler(data, this.lastType);
     }
 
     // Wait for all queued animations to complete
@@ -103,38 +107,35 @@ AnimationManager.register('cardDeath', ({ card, pl, pos }) => {
     return Promise.resolve();
 });
 
-AnimationManager.register('damage', ({ pl, pos }) => {
-    const overlay = document.createElement("canvas");
-    overlay.style.transitionDuration = "150ms";
-    overlay.width = i_cards.dims[0] * 2;
-    overlay.height = i_cards.dims[1] * 2;
-    i_cards.draw(overlay.getContext("2d"), 2, 1, 3, 0, 0);
-    boardOverlays[pl][pos].appendChild(overlay);
+AnimationManager.register('damage', ({ pl, pos, delay = 0 }) => {
+    setTimeout(() => {
+        const overlay = document.createElement("canvas");
+        overlay.style.transitionDuration = "150ms";
+        overlay.width = i_cards.dims[0] * 2;
+        overlay.height = i_cards.dims[1] * 2;
+        i_cards.draw(overlay.getContext("2d"), 2, 1, 3, 0, 0);
+        boardOverlays[pl][pos].appendChild(overlay);
 
-    requestAnimationFrame(() => {
-        overlay.style.opacity = 0.75;
-        setTimeout(() => {
-            overlay.style.opacity = 0;
-            setTimeout(() => overlay.remove(), 150);
-        }, 200);
-    });
+        requestAnimationFrame(() => {
+            overlay.style.opacity = 0.75;
+            setTimeout(() => {
+                overlay.style.opacity = 0;
+                setTimeout(() => overlay.remove(), 150);
+            }, 200);
+        });
+
+    }, delay);
 
     return Promise.resolve();
 });
 
-AnimationManager.register('attack', ({ card, pos, pl, target, skipDamage }) => {
+AnimationManager.register('attack', ({ card, pos, pl, target }) => {
     moveForward(card, pos, pl, target);
 
     const s = cardSpaces[pl][target];
     if (!game.canBlock) {
         s.style.opacity = 0;
         setTimeout(() => { s.style.opacity = ""; }, 650);
-    }
-
-    if (!skipDamage) {
-        setTimeout(() => {
-            anim.fire('damage', { pl, pos: target });
-        }, 150);
     }
 
     setTimeout(() => {
@@ -286,67 +287,76 @@ AnimationManager.register('playCard', ({ card, pl, target, nc }) => {
     trans.style.top = targetRect.top + "px";
     trans.style.left = targetRect.left + "px";
 
-    anim.delay(150);
-
-    return new Promise(resolve => {
-        setTimeout(() => {
-            resolve();
-            const c2 = nc ?? card;
-            trans.remove();
-            c2.classList.remove("wackyStuff");
-            targetOverlay.innerHTML = "";
-            targetEl.parentNode.classList.remove("helpme");
-            setTimeout(() => c2.classList.remove("suppressEvents"), 200);
-
-            if (game.overBool) return;
-            targetEl.appendChild(c2);
-        }, 200);
-    });
-});
-
-AnimationManager.register('addToHand', ({ card, pl, justPlayed }) => {
-    const cards = hands[pl].children.length;
-    const margin = calcMargin(hands[pl], cards);
-    const desiredWidth = (cards + (justPlayed ? 0 : 1)) * (2 * cardWidth + margin) - margin;
-    const desiredPos = (innerWidth + desiredWidth) / 2 - 2 * cardWidth;
-
-    hands[pl].style.width = hands[pl].offsetWidth + "px";
-    void hands[pl].offsetWidth;
-    hands[pl].style.width = desiredWidth + "px";
-
-    card.style.left = desiredPos + "px";
-    card.classList.add("adding", "suppressEvents");
-    card.style.top = (pl === 0 ? 1 : -1) * 500 + "px";
-
-    hands[pl].parentNode.appendChild(card);
-    void card.offsetHeight;
-    card.style.top = "0";
+    // anim.delay(150);
 
     setTimeout(() => {
-        card.classList.remove("adding");
-        setTimeout(() => card.classList.remove("suppressEvents"), 200);
-        card.style.left = "";
-        card.style.top = "";
+        const c2 = nc ?? card;
+        trans.remove();
+        c2.classList.remove("wackyStuff");
+        targetOverlay.innerHTML = "";
+        targetEl.parentNode.classList.remove("helpme");
+        setTimeout(() => c2.classList.remove("suppressEvents"), 200);
 
-        if (!card.classList.contains("wackyStuff")) {
-            if (game.overBool) {
-                card.remove();
-                return;
-            }
+        if (game.overBool) return;
+        targetEl.appendChild(c2);
+    }, 200);
 
-            const el = hands[pl].lastElementChild;
-            if (el) el.style.transition = "none";
-            hands[pl].appendChild(card);
-            setTimeout(() => { if (el) el.style.transition = ""; }, 100);
-        }
+    return new Promise(resolve => setTimeout(resolve, 150));
+});
 
-        hands[pl].style.width = "";
-    }, 500);
+AnimationManager.register('addToHand', ({ card, pl, justPlayed }, lastType) => {
+    const delay = lastType === 'addToHand' ? Math.max(300 - (Date.now() - drawAnim[pl].lastTime), 0) : 0;
 
     return new Promise(resolve => {
         setTimeout(() => {
-            resolve();
-        }, 300);
+
+            const cards = hands[pl].children.length;
+            const margin = calcMargin(hands[pl], cards);
+            const desiredWidth = (cards + (justPlayed ? 0 : 1)) * (2 * cardWidth + margin) - margin;
+            const desiredPos = (innerWidth + desiredWidth) / 2 - 2 * cardWidth;
+
+            hands[pl].style.width = hands[pl].offsetWidth + "px";
+            void hands[pl].offsetWidth;
+            hands[pl].style.width = desiredWidth + "px";
+
+            card.style.left = desiredPos + "px";
+            card.classList.add("adding", "suppressEvents");
+            card.style.top = (pl === 0 ? 1 : -1) * 500 + "px";
+
+            hands[pl].parentNode.appendChild(card);
+            void card.offsetHeight;
+            card.style.top = "0";
+
+            setTimeout(() => {
+                card.classList.remove("adding");
+                setTimeout(() => card.classList.remove("suppressEvents"), 200);
+                card.style.left = "";
+                card.style.top = "";
+
+                if (!card.classList.contains("wackyStuff")) {
+                    if (game.overBool) {
+                        card.remove();
+                        return;
+                    }
+
+                    const el = hands[pl].lastElementChild;
+                    if (el) el.style.transition = "none";
+                    hands[pl].appendChild(card);
+                    setTimeout(() => { if (el) el.style.transition = ""; }, 100);
+                }
+
+                hands[pl].style.width = "";
+
+                if (drawProm) {
+                    drawProm();
+                    drawProm = null;
+                }
+            }, 450);
+
+            setTimeout(() => {
+                resolve();
+            }, 300);
+        }, delay);
     });
 });
 
@@ -413,7 +423,8 @@ AnimationManager.register('updateBones', ({ side, value }) => {
     return Promise.resolve();
 });
 
-AnimationManager.register('updateBlockActions', ({ blockActions, selectedCard, isSaccing }) => {
+AnimationManager.register('updateBlockActions', ({ delta }) => {
+    blockActions += delta;
     if (selectedCard != null) {
         if (blockActions === 0 || (!isSaccing && blockActions === 1)) {
             boards[0].classList.add("spacesClickable");
@@ -467,17 +478,48 @@ AnimationManager.register('updateScale', ({ damage }) => {
     return Promise.resolve();
 });
 
-AnimationManager.register('counterAttack', ({ card, pos, pl, target }) => {
-    setTimeout(() => {
-        moveForward(card, pos, pl, target);
-        setTimeout(() => {
-            card.style.transform = "";
-        }, 200);
-    }, 350);
-    return Promise.resolve();
-});
-
 AnimationManager.register('flipDirection', ({ el, direction, myTurn }) => {
     el.style.transform = "rotateY(" + ((direction == 1) == (myTurn == 0) ? 0 : 180) + "deg)";
     return Promise.resolve();
+});
+
+AnimationManager.register('promptForDraw', ({ qty }) => {
+    const rect = myDecks.getBoundingClientRect();
+    drawOverlay.style.top = rect.top - nuhuhPadding + "px";
+    drawOverlay.style.left = rect.left - nuhuhPadding + "px";
+    nuhuh.style.transitionDuration = "300ms";
+    nuhuh.style.opacity = "1";
+
+    if (run) {
+        const rect = gidParent.getBoundingClientRect();
+        lensEl.style.top = rect.top + "px";
+        lensEl.style.left = rect.left + "px";
+        lensEl.classList.add("events");
+    }
+
+    const t = game.manas ? 2 : 1;
+    for (let i = 0; i < t; i++) {
+        async function myFunc() {
+            if (qty == 0) return;
+            qty--;
+            if (qty == 0) {
+                for (let j = 0; j < t; j++) {
+                    deckPiles[0][j].removeEventListener("click", myFunc);
+                    deckPiles[0][j].style.cursor = "";
+                }
+                nuhuh.style.transitionDuration = "100ms";
+                nuhuh.style.opacity = "0";
+                lensEl.classList.remove("events");
+            }
+
+            sendMsg(codeDecision + " " + i);
+            await game.drawCard(i);
+
+            if (qty == 0) {
+                updateBlockActions(-1);
+            }
+        }
+        deckPiles[0][i].addEventListener("click", myFunc);
+        deckPiles[0][i].style.cursor = "pointer";
+    }
 });

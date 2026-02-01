@@ -247,7 +247,7 @@ function selectCard(card) {
 }
 
 function playCard(card, pl, target, nc = null) {
-    drawAnim[pl].enqueue('playCard', { card, pl, target, nc });
+    anim.enqueue('playCard', { card, pl, target, nc });
 }
 
 function unplayCard(pl, target) {
@@ -367,15 +367,13 @@ function cancelHammer() {
 hammer.addEventListener("click", function () {
     if (hammerTime) {
         cancelHammer();
-        blockActions--;
-        updateBlockActions();
+        updateBlockActions(-1);
     }
     else if (!blockActions) {
         unselectCard();
         hammer.classList.add("clickedImg");
         hammerTime = true;
-        blockActions++;
-        updateBlockActions();
+        updateBlockActions(1);
         boards[0].classList.add("cardsClickable");
         boards[0].classList.add("hammering");
     }
@@ -407,8 +405,7 @@ bsBtn.addEventListener("click", function () {
     bsPopup.style.opacity = "0";
     bsPopup.style.visibility = "hidden";
     bsPopup.style.transitionDuration = "";
-    blockActions--;
-    updateBlockActions();
+    updateBlockActions(-1);
     game.BSDetector = -1;
     sendMsg(codeBoneBounty);
 });
@@ -421,8 +418,7 @@ function BSDetected() {
         bsPopup.style.opacity = "1";
         bsPopup.style.visibility = "visible";
         bsPopup.style.transitionDuration = "400ms";
-        blockActions++;
-        updateBlockActions();
+        updateBlockActions(1);
     }
 }
 
@@ -521,8 +517,8 @@ for (let h = 0; h < cardSpacesBase[0].length; h++) {
             }
 
             await game.resolve();
-            blockActions--;
-            updateBlockActions();
+            game.updateControls();
+            updateBlockActions(-1);
             return;
         }
 
@@ -576,15 +572,15 @@ for (let h = 0; h < cardSpacesBase[0].length; h++) {
                     hands[0].classList.remove("cardsClickable");
                     isSaccing = false;
                     sacs = 0;
-                    blockActions += 2;
-                    updateBlockActions();
+                    updateBlockActions(2);
                     await game.resolve();
-                    blockActions--;
-                    updateBlockActions();
+                    game.updateControls();
+                    updateBlockActions(-1);
                 }
             }
         }
         else {
+            console.log("here i am", blockActions);
             if ((blockActions && isSaccing) || blockActions > 1 || game.board[game.myTurn][i] != null) return;
             const played = selectedCard;
             const handIndex = game.hand.indexOf(selectedCard);
@@ -612,8 +608,7 @@ for (let h = 0; h < cardSpacesBase[0].length; h++) {
 
             await selectedCard.play(i);
             if (!isSaccing) {
-                blockActions--;
-                updateBlockActions();
+                updateBlockActions(-1);
                 isSaccing = true;
                 hooked = false;
             }
@@ -663,12 +658,10 @@ const theirItems = playScr.querySelector("#oppItems").children;
 for (let i = 0; i < gameItemDivs.length; i++) {
     gameItemDivs[i].addEventListener("click", async function () {
         if (i < run.items.length && run.usedItems.indexOf(i) == -1 && blockActions == 0) {
-            blockActions++;
-            updateBlockActions();
+            updateBlockActions(1);
             clickPromArmor = true;
             await run.items[i].myFunc(i);
-            blockActions--;
-            updateBlockActions();
+            updateBlockActions(-1);
         }
     });
 }
