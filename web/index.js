@@ -393,7 +393,7 @@ s_push.onTurnEnded.push(new Listener(listen_ally, async function (me, memory) {
     let p = canPush(me, memory.direction);
     if (p == -1) {
         memory.direction *= -1;
-        moverTrans(memory.el, memory.direction);
+        anim.enqueue('flipDirection', { el: memory.el, direction: memory.direction, myTurn: game.myTurn });
         p = canPush(me, memory.direction);
     }
     if (p != -1) {
@@ -522,7 +522,7 @@ s_burrow.onFaceDmg.push(new Listener(listen_ally, async function (dmg, me, attac
     if (game.board[me.side][target] == null) {
         const dist = Math.abs(target - me.pos);
         game.board[me.side][me.pos] = null;
-        game.burrowDelay = moveDelays[Math.min(3, dist)];
+        game.preAttackDelay = moveDelays[Math.min(3, dist)];
         game.canBlock = true;
         await me.place(target, me.side);
         await attacker.hit(me);
@@ -645,11 +645,8 @@ s_bells.onCardPlayed.push(new Listener(listen_me, async function (me) {
 s_bells.onReceivedAttack.push(new Listener(listen_ally, async function (me, attacker, target) {
     if (game.canBlock) {
         if (target.card == c_bell) {
-            moveForward(me.canvas, me.pos, +(me.side == game.myTurn), attacker.pos);
-            setTimeout(function () {
-                me.canvas.style.transform = "";
-            }, 200);
-
+            anim.enqueue('counterAttack', { card: me.canvas, pos: me.pos, pl: +(me.side == game.myTurn), target: attacker.pos });
+            game.postAttackDelay = 500;
             await me.hit(attacker, true);
         }
     }
@@ -761,7 +758,7 @@ s_looter.onFaceDmg.push(new Listener(listen_enemy, async function (dmg, me, atta
 }, -1));
 
 s_dependant.init([0, 4], "Gem Dependant", "Se você não tiver Gemas, morre no fim do turno ou ao ser jogada.", undefined, true);
-async function gemCheck(me, wait = 0) {
+function gemCheck(me, wait = 0) {
     for (let i = 0; i < game.lanes; i++) {
         if (i != me.pos) {
             const c = game.board[me.side][i];
@@ -770,14 +767,14 @@ async function gemCheck(me, wait = 0) {
             }
         }
     }
-    if (wait > 0) await anim.flush();
+    if (wait > 0) anim.delay(wait);
     me.die();
 }
 s_dependant.onTurnEnded.push(new Listener(listen_any, async function (me) {
-    await gemCheck(me);
+    gemCheck(me);
 }, 0));
 s_dependant.onCardPlayed.push(new Listener(listen_me, async function (me) {
-    await gemCheck(me, 250);
+    gemCheck(me, 250);
 }, 0));
 
 s_repulsive.init([5, 4], function (sign, me, pos) {
@@ -1445,17 +1442,15 @@ class GameCard {
             const t = game.targets[i];
             let opp = game.board[1 - game.turn][t];
             game.canBlock = true;
-            game.burrowDelay = null;
+            game.preAttackDelay = 0;
+            game.postAttackDelay = 0;
+
             for (let s of this.sigils) {
                 if (s.funcs.onDealtAttack != null) {
                     // console.log("<ONATTACK ABILITY "+this.debugInfo());
                     await s.funcs.onDealtAttack(this, opp, i, s.data);
                     // console.log(">ONATTACK ABILITY "+this.debugInfo());
                 }
-            }
-
-            if (game.burrowDelay != null) {
-                anim.delay(game.burrowDelay);
             }
 
             if (opp == null) {
@@ -1465,15 +1460,24 @@ class GameCard {
                 await this.hit(opp);
             }
 
+            if (game.preAttackDelay != 0) {
+                anim.delay(game.preAttackDelay);
+            }
+
             anim.enqueue('attack', {
                 card: this.canvas,
                 pos: this.pos,
                 pl: +(this.side == game.myTurn),
                 target: t,
-                skipDamage: game.burrowDelay != null
+                skipDamage: game.preAttackDelay != 0
             });
 
+            if (game.postAttackDelay != 0) {
+                anim.delay(game.postAttackDelay);
+            }
+
             game.attacked = opp;
+            if (game.dmgQueue.length == 0) anim.delay(500);
             await game.resolveDamage();
 
             if (!this.inGame) {
@@ -1727,7 +1731,7 @@ class Game {
             }
 
             this.overProm();
-        }.bind(this), 1500);
+        }.bind(this), 1250);
     }
 
     energize() {
@@ -1751,7 +1755,7 @@ class Game {
             }
         }
         this.scales += pow * (this.turn == 0 ? 1 : -1);
-        updateScale(pow * (this.turn == this.myTurn ? 1 : -1));
+        anim.enqueue('updateScale', { damage: pow * (this.turn == this.myTurn ? 1 : -1) });
     }
 
     async resolveDeaths() {
@@ -1994,7 +1998,7 @@ class Game {
             }
             else {
                 card = this.deck.pop();
-                card = c_mrs_bomb;
+                card = c_daus;
                 cardsLeft = this.deck.length;
             }
         }

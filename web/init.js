@@ -157,10 +157,6 @@ class BuffSigil extends Sigil {
     }
 }
 
-function moverTrans(el, dir) {
-    el.style.transform = "rotateY(" + ((dir == 1) == (game.myTurn == 0) ? 0 : 180) + "deg)";
-}
-
 class SSpawner extends Sigil {
     init(coords, spawn, name = null, desc = null) {
         super.init(coords, name, desc, initDirection);
@@ -170,7 +166,7 @@ class SSpawner extends Sigil {
             let att = pos + memory.direction;
             if (att >= game.lanes || att < 0 || game.board[game.turn][att] != null) {
                 memory.direction *= -1;
-                moverTrans(memory.el, memory.direction);
+                anim.enqueue('flipDirection', { el: memory.el, direction: memory.direction, myTurn: game.myTurn });
                 att = pos + memory.direction;
                 if (att >= game.lanes || att < 0 || game.board[game.turn][att] != null) { att = pos; }
             }

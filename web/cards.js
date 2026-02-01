@@ -6,7 +6,7 @@ c_energy_bot.init("Energy Bot", 2, 0, 1, energy, [s_energy], null, [4, 0]);
 c_bloodhound.init("Bloodhound", 2, 2, 4, blood, [s_guardian], null, [5, 0]);
 c_bolthound.init("Bolthound", 5, 2, 4, energy, [s_guardian], null, [0, 1]);
 c_explode_bot.init("Explode Bot", 4, 1, 1, energy, [s_explosive], null, [1, 1]);
-c_mrs_bomb.init("Mrs. Bomb", 0, 1, 2, energy, [s_bomb], null, [2, 1]);
+c_mrs_bomb.init("Mrs. Bomb", 5, 1, 2, energy, [s_bomb], null, [2, 1]);
 c_bonehound.init("Bonehound", 4, 2, 4, bones, [s_guardian], null, [3, 1]);
 c_bullfrog.init("Bullfrog", 1, 1, 4, blood, [s_reach], null, [6, 1]);
 c_sniper.init("Sniper Bot", 3, 1, 1, energy, [s_sniper], null, [8, 1]);

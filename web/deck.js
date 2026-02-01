@@ -633,36 +633,6 @@ for (let h = 0; h < cardSpacesBase[1].length; h++) {
     });
 }
 
-let scaleIntv = null;
-let toConsume = 0;
-let scalePartial = 0;
-function updateScale(damage) {
-    if (toConsume == 0) {
-        function f() {
-            if (toConsume == 0) {
-                clearInterval(scaleIntv);
-                return;
-            }
-            const dir = toConsume > 0 ? 1 : -1;
-            scalePartial += dir;
-            if (scalePartial <= 0 && scalePartial < -game.tips[0] || scalePartial >= 0 && scalePartial > game.tips[1]) {
-                scaleVal.textContent = scalePartial;
-            }
-            else {
-                setScale(scalePartial);
-            }
-            toConsume -= dir;
-        }
-        clearInterval(scaleIntv);
-        scaleIntv = setInterval(f, 300);
-        toConsume = damage;
-        f();
-    }
-    else {
-        toConsume += damage;
-    }
-}
-
 async function newGame(chosen, myJSON, theirJSON, creator) {
     let _manas = null;
     mode = actModes[creator.mode];

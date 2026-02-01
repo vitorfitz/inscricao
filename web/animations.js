@@ -434,3 +434,50 @@ AnimationManager.register('updateBlockActions', ({ blockActions, selectedCard, i
     }
     return Promise.resolve();
 });
+
+let scaleIntv = null;
+let toConsume = 0;
+let scalePartial = 0;
+AnimationManager.register('updateScale', ({ damage }) => {
+    if (toConsume == 0) {
+        function f() {
+            if (toConsume == 0) {
+                clearInterval(scaleIntv);
+                return;
+            }
+            const dir = toConsume > 0 ? 1 : -1;
+            scalePartial += dir;
+            if (scalePartial <= 0 && scalePartial < -game.tips[0] || scalePartial >= 0 && scalePartial > game.tips[1]) {
+                scaleVal.textContent = scalePartial;
+            }
+            else {
+                setScale(scalePartial);
+            }
+            toConsume -= dir;
+        }
+        clearInterval(scaleIntv);
+        scaleIntv = setInterval(f, 300);
+        toConsume = damage;
+        f();
+    }
+    else {
+        toConsume += damage;
+    }
+
+    return Promise.resolve();
+});
+
+AnimationManager.register('counterAttack', ({ card, pos, pl, target }) => {
+    setTimeout(() => {
+        moveForward(card, pos, pl, target);
+        setTimeout(() => {
+            card.style.transform = "";
+        }, 200);
+    }, 350);
+    return Promise.resolve();
+});
+
+AnimationManager.register('flipDirection', ({ el, direction, myTurn }) => {
+    el.style.transform = "rotateY(" + ((direction == 1) == (myTurn == 0) ? 0 : 180) + "deg)";
+    return Promise.resolve();
+});
