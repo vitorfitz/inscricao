@@ -362,16 +362,10 @@ AnimationManager.register('addToHand', ({ card, pl, justPlayed }, lastType) => {
     });
 });
 
-AnimationManager.register('sacAnim', ({ side, pos }) => {
-    const sacOverlay = document.createElement("canvas");
-    sacOverlay.style.transitionDuration = "100ms";
-    sacOverlay.width = i_cards.dims[0] * 2;
-    sacOverlay.height = i_cards.dims[1] * 2;
-    i_cards.draw(sacOverlay.getContext("2d"), 2, 0, 2, 0, 0);
-    boardOverlays[side][pos].appendChild(sacOverlay);
-    void sacOverlay.offsetHeight;
-    sacOverlay.style.opacity = 0.75;
-    sacOverlays.push(sacOverlay);
+AnimationManager.register('sacAnim', ({ side, pos, overlay }) => {
+    boardOverlays[side][pos].appendChild(overlay);
+    void overlay.offsetHeight;
+    overlay.style.opacity = 0.75;
     return Promise.resolve();
 });
 

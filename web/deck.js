@@ -389,7 +389,13 @@ let sacOverlays = [];
 let isSaccing = true, hooked = false;
 
 function sacAnim(side, pos) {
-    anim.enqueue('sacAnim', { side, pos });
+    const overlay = document.createElement("canvas");
+    overlay.style.transitionDuration = "100ms";
+    overlay.width = i_cards.dims[0] * 2;
+    overlay.height = i_cards.dims[1] * 2;
+    i_cards.draw(overlay.getContext("2d"), 2, 0, 2, 0, 0);
+    sacOverlays.push(overlay);
+    anim.enqueue('sacAnim', { side, pos, overlay });
 }
 
 async function sacrifice() {

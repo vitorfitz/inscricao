@@ -1982,8 +1982,7 @@ class Game {
             }
             else {
                 card = this.deck.pop();
-                // card = c_mrs_bomb;
-                card = Math.random() < 0.5 ? c_cat : c_elk;
+                card = c_mole;
                 cardsLeft = this.deck.length;
             }
         }
