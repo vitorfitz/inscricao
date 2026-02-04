@@ -255,12 +255,12 @@ s_death_touch.onDealtDmg = function (dmg, _, opp) {
 
 s_double_death.init([3, 1], "Double Death", "Efeitos de morte aliados ativam duas vezes.");
 s_double_death.onCardDied.push(new Listener(listen_ally, async function (me, them) {
-    if (me.card != them.card) {
+    if (me != them) {
         for (let s of them.sigils) {
             for (let f of s.funcs.onCardDied) {
                 if (f.type == listen_me) {
                     await f.func(them, them, s.data);
-                    await game.resolve();
+                    game.sortListeners();
                 }
             }
         }
@@ -269,7 +269,7 @@ s_double_death.onCardDied.push(new Listener(listen_ally, async function (me, the
         for (let l of game.deathListeners[me.side]) {
             if (!l.caller.hasSigil(s_double_death)) {
                 await l.func(l.caller, them, l.data);
-                await game.resolve();
+                game.sortListeners();
             }
         }
     }
@@ -1513,6 +1513,8 @@ class Game {
         this.faceListeners = [[], []];
         this.movementListeners = [[], []];
         this.drawListeners = [[], []];
+
+        stopAnims = false;
     }
 
     checkScales() {
@@ -1605,7 +1607,7 @@ class Game {
         }
     }
 
-    itsOver() {
+    async itsOver() {
         if (this.overBool) return;
         this.overBool = true;
         this.abortProm();
@@ -1615,10 +1617,9 @@ class Game {
         hooked = false;
         clickProm = null;
         clickPromArmor = false;
-        blockActions++;
         anim.fire('updateBlockActions', { delta: 1 });
-        nuhuhSniper.style.transitionDuration = "100ms";
-        nuhuhSniper.style.opacity = "0";
+
+        await anim.delay(0);
 
         if (run) {
             if (this.scales <= 0) {
@@ -1639,6 +1640,7 @@ class Game {
             anim.clear();
             drawAnim[0].clear();
             drawAnim[1].clear();
+            stopAnims = true;
             clearInterval(scaleIntv);
             scalePartial = 0;
             toConsume = 0;
@@ -1767,10 +1769,8 @@ class Game {
                             }
                         }
                         if (ref == "deathListeners" && j == card.side) {
-                            //console.log("<ONDEATH ABILITY "+l.caller.debugInfo());
                             await l.func(l.caller, card, l.data);
                             game.sortListeners();
-                            //console.log(">ONDEATH ABILITY "+l.caller.debugInfo());
                         }
                         l2.push(l);
                     }
@@ -1782,7 +1782,6 @@ class Game {
                 if (this.board[card.side][card.pos] == card) this.board[card.side][card.pos] = null;
                 this.bones[card.side]++;
             }
-            //console.log(">DEATH "+card.debugInfo());
         }
 
         if (this.needsDelay) {
@@ -1982,7 +1981,7 @@ class Game {
             }
             else {
                 card = this.deck.pop();
-                card = c_mole;
+                // card = c_necromancer;
                 cardsLeft = this.deck.length;
             }
         }

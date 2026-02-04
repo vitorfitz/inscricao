@@ -1,5 +1,7 @@
 "use strict"
 
+let stopAnims = true;
+
 class AnimationManager {
     constructor() {
         this.queue = [];
@@ -26,7 +28,7 @@ class AnimationManager {
 
     // Add a delay to the queue
     delay(ms) {
-        this.enqueue('_delay', ms);
+        return this.enqueue('_delay', ms);
     }
 
     cancel(id) {
@@ -299,7 +301,7 @@ AnimationManager.register('playCard', ({ card, pl, target, nc }) => {
         targetEl.parentNode.classList.remove("helpme");
         setTimeout(() => c2.classList.remove("suppressEvents"), 200);
 
-        if (game.overBool) return;
+        if (stopAnims) return;
         targetEl.appendChild(c2);
     }, 200);
 
@@ -311,7 +313,6 @@ AnimationManager.register('addToHand', ({ card, pl, justPlayed }, lastType) => {
 
     return new Promise(resolve => {
         setTimeout(() => {
-
             const cards = hands[pl].children.length;
             const margin = calcMargin(hands[pl], cards);
             const desiredWidth = (cards + (justPlayed ? 0 : 1)) * (2 * cardWidth + margin) - margin;
@@ -336,7 +337,7 @@ AnimationManager.register('addToHand', ({ card, pl, justPlayed }, lastType) => {
                 card.style.top = "";
 
                 if (!card.classList.contains("wackyStuff")) {
-                    if (game.overBool) {
+                    if (stopAnims) {
                         card.remove();
                         return;
                     }
@@ -557,6 +558,7 @@ AnimationManager.register('sniperModifyTargets', async ({ me }) => {
 
             let dmgOverlays = [], dmgEvents = [];
             const numTargets = game.targets.length;
+            let oldTargets = game.targets;
             game.targets = [];
             let complete;
 
@@ -580,7 +582,7 @@ AnimationManager.register('sniperModifyTargets', async ({ me }) => {
                 cardSpaces[1][i].parentNode.parentNode.addEventListener("click", dmgEvents[i]);
             }
 
-            await Promise.any([game.over, new Promise((resolve) => {
+            await Promise.any([game.abort, new Promise((resolve) => {
                 complete = resolve;
             })]);
             for (let i = 0; i < cardSpaces[1].length; i++) {
